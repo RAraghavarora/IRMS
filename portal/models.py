@@ -24,7 +24,7 @@ class AccountOffsets(models.Model):
     created_on = models.DateTimeField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'account_offsets'
 
 
@@ -941,13 +941,17 @@ class Borrowers(models.Model):
     checkprevcheckout = models.CharField(max_length=7)
     updated_on = models.DateTimeField()
     lastseen = models.DateTimeField(blank=True, null=True)
-    lang = models.CharField(max_length=25)
+    lang = models.CharField(max_length=25, blank=True)
     login_attempts = models.IntegerField(blank=True, null=True)
     overdrive_auth_token = models.TextField(blank=True, null=True)
 
     class Meta:
+        verbose_name_plural = 'Borrowers'
         managed = False
         db_table = 'borrowers'
+
+    def __str__(self):
+            return str(self.borrowernumber) + ' - ' + self.firstname + self.surname if self.firstname else str(self.borrowernumber) + ' - ' +  self.surname
 
 
 class BranchBorrowerCircRules(models.Model):
@@ -1013,8 +1017,12 @@ class Branches(models.Model):
     pickup_location = models.IntegerField()
 
     class Meta:
+        verbose_name_plural = 'Branches'
         managed = False
         db_table = 'branches'
+
+    def __str__(self):
+        return self.branchname + ' - ' + self.branchcode
 
 
 class BranchesOverdrive(models.Model):
@@ -1072,8 +1080,12 @@ class Categories(models.Model):
     checkprevcheckout = models.CharField(max_length=7)
 
     class Meta:
+        verbose_name_plural = 'Categories'
         managed = False
         db_table = 'categories'
+
+    def __str__(self):
+        return self.categorycode
 
 
 class CategoriesBranches(models.Model):

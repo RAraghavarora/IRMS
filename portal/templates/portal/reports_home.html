@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+{%load static%}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{% static 'portal/css/style.css' %}">
+    <title> IRMS - IGCAR</title>
+</head>
+
+<body>
+    <h1> IRMS - Integrated Reports Management System - IGCAR
+
+      <form method="POST" action="{% url 'portal:generate_report' %}" class="post-form">{% csrf_token %}
+          <select name="Report type">
+            <option value="Select Report Type" selected disabled hidden> Select Report Type</option>
+            {% for report_type in report_types %}
+              <option value={{report_type}}>{{report_type}} </option>
+            {% endfor %}
+          </select>
+          <select name="Table">
+            {% for table in tables %}
+              <option value={{table}}>{{table}} </option>
+            {% endfor %}
+          </select>
+
+
+          <button type="submit" class="save btn btn-default">Submit</button>
+      </form>
+</body>
