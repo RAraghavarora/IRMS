@@ -17,6 +17,7 @@ class AccountOffsetTypes(models.Model):
 
 
 class AccountOffsets(models.Model):
+    # id is the primary key
     credit = models.ForeignKey('Accountlines', related_name='offsets_credited', on_delete=models.SET_NULL, blank=True, null=True) # The accountline that increased the patron's balance
     debit = models.ForeignKey('Accountlines', related_name='offsets_debited', on_delete=models.SET_NULL, blank=True, null=True) # The accountline that decreased the patron's balance
     type = models.ForeignKey(AccountOffsetTypes, on_delete=models.CASCADE, db_column='type')
@@ -66,6 +67,7 @@ class ActionLogs(models.Model):
 
 
 class AdditionalFieldValues(models.Model):
+    # id is the primary key
     field = models.ForeignKey('AdditionalFields', models.DO_NOTHING)
     record_id = models.IntegerField()
     value = models.CharField(max_length=255)
@@ -1539,7 +1541,7 @@ class Deletedbiblioitems(models.Model):
 
 
 class Deletedborrowers(models.Model):
-    borrowernumber = models.IntegerField()
+    borrowernumber = models.IntegerField(primary_key=True)
     cardnumber = models.CharField(max_length=32, blank=True, null=True)
     surname = models.TextField(blank=True, null=True)
     firstname = models.TextField(blank=True, null=True)
