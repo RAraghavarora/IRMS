@@ -72,3 +72,8 @@ class GenerateReport(APIView):
         }
 
         return render(request, 'portal/generate_report.html', context)
+
+class Login(APIView):
+
+    def get(self, request):
+        return render(request, 'portal/login.html')
