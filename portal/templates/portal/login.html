@@ -11,16 +11,18 @@
     <div class="login-page">
       <div class="form">
         <h1> Login - IRMS <small>Integrated Reports Management System</small></h1>
-        <form class="register-form">
+        <!-- <form class="register-form">
           <input type="text" placeholder="name"/>
           <input type="password" placeholder="password"/>
           <input type="text" placeholder="email address"/>
           <button>create</button>
           <p class="message">Already registered? <a href="#">Sign In</a></p>
-        </form>
-        <form class="login-form">
-          <input type="text" placeholder="username"/>
-          <input type="password" placeholder="password"/>
+        </form> -->
+        <form class="login-form"  method="POST" action="{% url 'portal:login' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.GET.next }}"/>
+          <input type="text" placeholder="username" name="username"/>
+          <input type="password" placeholder="password" name="password"/>
           <button>login</button>
         </form>
       </div>

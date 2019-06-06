@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+{%load static%}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{% static 'portal/css/style.css' %}">
+    <title> IRMS - IGCAR</title>
+</head>
+
+<body>
+    <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
+
+      <form method="POST" action="{% url 'portal:circulation' %}" class="post-form">{% csrf_token %}
+          <input type="date" name="from_date">From date </input><br>
+          <input type="date" name="to_date">To date </input></br>
+
+          <br>
+          <b> Order By:</b><br>
+          <input type="radio" name='order_by' value='issues.issuedate'>Date
+          <select name="issues.issuedate_filter">
+            <option value="ASC" selected>Ascending</option>
+            <option value="DESC">Descending </option>
+          </select>
+
+          <br>
+          <input type="radio" name='order_by' value='name'>Name
+          <select name="name_filter">
+            <option value="ASC" selected>Ascending</option>
+            <option value="DESC">Descending </option>
+          </select>
+
+          <br>
+          <input type="radio" name='order_by' value='biblio.title'>Book Title
+          <select name="biblio.title_filter">
+            <option value="ASC" selected>Ascending</option>
+            <option value="DESC">Descending </option>
+          </select>
+
+        </br>
+        </br>
+          <button type="submit" class="btn btn-link">Submit</button>
+      </form>
+</body>

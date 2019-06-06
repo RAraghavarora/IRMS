@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>IRMS | IGCAR</title>
+
+    <!-- <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css"> -->
+
+    <link href="{% static 'bootstrap/css/bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'portal/css/dataTables.bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'node-waves/waves.css' %}" rel="stylesheet">
+    <link href="{% static 'portal/css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'portal/css/animate.css' %}" rel="stylesheet" />
+
+
+    {% block head %} {% endblock %}
+    <link href="{% static 'portal/css/all-themes.css' %}" rel="stylesheet" />
+
+</head>
+
+<body class="theme-cyan">
+    <div class="overlay"></div>
+    <!-- Top Bar -->
+    <nav class="navbar">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
+                <!-- <a href="javascript:void(0);" class="bars"></a> -->
+                <a class="navbar-brand">IRMS | IGCAR</a>
+            </div>
+            <nav class="right-nav" >
+              <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
+              <!-- <a href="javascript:void(0);" class="bars"></a> -->
+              <a class="navbar-brand" href="{% url 'portal:logout' %}">Logout</a>
+            </nav>
+        </div>
+    </nav>
+    {% block content %}
+    {% endblock %}
+<!--
+    <script src="{% static 'portal/js/index.js' %}"></script>
+    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+    <script src="{% static 'portal/js/jquery.slimscroll.js' %}"></script>
+    <script src="{% static 'node-waves/waves.js' %}"></script>
+    <script src="{% static 'portal/js/admin.js' %}"></script>
+    <script src="{% static 'portal/js/demo.js' %}"></script> -->
+
+
+</body>
+
+</html>

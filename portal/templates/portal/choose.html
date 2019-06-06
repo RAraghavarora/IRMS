@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+{%load static%}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{% static 'portal/css/style.css' %}">
+    <title> IRMS - IGCAR</title>
+</head>
+
+<body>
+    <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
+
+    <table style="border-right: 10px solid black;" class="table floatTable table-bordered">
+      <thead>
+        <th>
+          <td> Choose fields </td>
+        </th>
+      </thead>
+      <tbody>
+        <form action="login-form" method="POST" action="{% url 'portal:login' %}">
+        <tr>
+            <td> <input type="checkbox" name='fields' > borrower name </td>
+        </tr>
+        <tr>
+            <td> <input type="checkbox" name='fields' > borrower number </td>
+        </tr>
+      </form>
+      </tbody>
+    </table>
+    <table class="table floatTable ">
+      <thead>
+        <th>
+          <td> Chosen fields </td>
+        </th>
+      </thead>
+      <tbody>
+        <tr>
+          <form action="login-form" method="POST" action="{% url 'portal:login' %}">
+            <td> <input type="checkbox" name='fields' > item name </td>
+          </form>
+        </tr>
+      </tbody>
+    </table>
+
+
+
+
+    <script src="{% static 'jquery/js/jquery.js' %}"></script>
+    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+    <script src="{% static 'jquery/js/jquery.dataTables.js' %}"></script>
+
+    <script src="{% static 'portal/js/jquery.slimscroll.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/buttons.flash.min.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/jszip.min.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/pdfmake.min.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/vfs_fonts.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/buttons.html5.min.js' %}"></script>
+    <script src="{% static 'jquery/extensions/export/buttons.print.min.js' %}"></script>
+    <script src="{% static 'portal/js/admin.js' %}"></script>
+    <script src="{% static 'node-waves/waves.js' %}"></script>
+    <script src="{% static 'portal/js/demo.js' %}"></script>
+    <script src="{% static 'portal/js/jquery-datatable.js' %}"></script>
+    <script src="{% static 'portal/js/script.js' %}"></script>
+
+
+    <script src="{% static 'jquery/skin/bootstrap/js/dataTables.bootstrap.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap-select.js' %}"></script>
+</body>

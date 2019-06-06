@@ -607,12 +607,12 @@ class Biblio(models.Model):
     frameworkcode = models.CharField(max_length=4)
     author = models.TextField(blank=True, null=True)
     title = models.TextField(blank=True, null=True)
-    unititle = models.TextField(blank=True, null=True)
+    unititle = models.TextField(blank=True, null=True) # uniform title (without the subtitle) from the MARC record
     notes = models.TextField(blank=True, null=True)
-    serial = models.IntegerField(blank=True, null=True)
+    serial = models.IntegerField(blank=True, null=True) # Boolean indicating whether biblio is for a serial
     seriestitle = models.TextField(blank=True, null=True)
     copyrightdate = models.SmallIntegerField(blank=True, null=True)
-    timestamp = models.DateTimeField()
+    timestamp = models.DateTimeField() # date and time this record was last touched
     datecreated = models.DateField()
     abstract = models.TextField(blank=True, null=True)
 
@@ -1063,6 +1063,7 @@ class Browser(models.Model):
 
 
 class Categories(models.Model):
+    ''' Category for patrons '''
     categorycode = models.CharField(primary_key=True, max_length=10)
     description = models.TextField(blank=True, null=True)
     enrolmentperiod = models.SmallIntegerField(blank=True, null=True)
@@ -2831,11 +2832,11 @@ class Reserves(models.Model):
 
 class Reviews(models.Model):
     reviewid = models.AutoField(primary_key=True)
-    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', blank=True, null=True)
-    biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber', blank=True, null=True)
-    review = models.TextField(blank=True, null=True)
-    approved = models.IntegerField(blank=True, null=True)
-    datereviewed = models.DateTimeField(blank=True, null=True)
+    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', blank=True, null=True) # The borrower that left this comment
+    biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber', blank=True, null=True) # The biblio record for which this comment is.
+    review = models.TextField(blank=True, null=True) #the body of the comment
+    approved = models.IntegerField(blank=True, null=True) #whether this comment has been approved by a librarian (1 for yes, 0 for no)
+    datereviewed = models.DateTimeField(blank=True, null=True) #the date the comment was left
 
     class Meta:
         managed = False
@@ -2853,7 +2854,7 @@ class SavedReports(models.Model):
 
 
 class SavedSql(models.Model):
-    borrowernumber = models.IntegerField(blank=True, null=True)
+    borrowernumber = models.IntegerField(blank=True, null=True) # The staff member who created this report
     date_created = models.DateTimeField(blank=True, null=True)
     last_modified = models.DateTimeField(blank=True, null=True)
     savedsql = models.TextField(blank=True, null=True)

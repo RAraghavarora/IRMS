@@ -1,0 +1,18 @@
+{% extends 'portal/base.html' %}
+
+{% block content %}
+
+  <section class="content">
+    <div class="card">
+        <div class="header">
+          <h2>
+            Hello {{name}}
+          </h2>
+          <a href="#" class="btn btn-link" role="button">View saved reports</a></br>
+          <a href="{% url 'portal:circulation' %}" class="btn btn-link" role="button">Generate a new report</a>
+
+        </div>
+    </div>
+  </section>
+
+{% endblock %}
