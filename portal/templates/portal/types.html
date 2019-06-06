@@ -22,33 +22,30 @@
 
   <body>
       <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
-      <h3 style="text-align: center"> {{report_type}} From: {{from_date}} To {{to_date}}</h3>
-      <h3> <small> Total number of entries: {{count}} </small> </h3>
 
-      <a href="{% url 'portal:demo' %}" class="btn btn-link" role="button">Generate a new report</a>
 
       <div class="row clearfix">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
             <div class="card">
                 <div class="body">
                     <table class="table table-bordered js-exportable" id='example'>
-                        <thead>
-                          <tr>
-                            {% for heading in headings %}
-                              <th>{{heading}}</th>
-                            {% endfor %}
-                          </tr>
-                        </thead>
 
                         <tbody>
+                          <tr>
+                            <td> Checked out books </td>
+                            <td><a href="{% url 'portal:checked_out' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
 
-                          {% for row in values %}
-                            <tr>
-                              {% for value in row %}
-                                <td height="7"> {{value}} </td>
-                              {% endfor %}
-                            </tr>
-                          {% endfor %}
+                          <tr>
+                            <td> Date filtered circulation report </td>
+                            <td> <a href="{% url 'portal:circulation' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+
+                          <tr>
+                            <td> Inactive Patrons </td>
+                            <td> <a href="{% url 'portal:inactive_patrons' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
 
                         </tbody>
 

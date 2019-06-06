@@ -1,3 +1,5 @@
+import MySQLdb
+
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
@@ -54,7 +56,6 @@ class CirculationReport(View):
         print(data)
         print(data)
 
-        import MySQLdb
 
         db = MySQLdb.connect(
             host="localhost",
@@ -67,14 +68,43 @@ class CirculationReport(View):
         from_timestamp = '{} 00:00:01'.format(data['from_date'])
         to_timestamp = '{} 23:59:59'.format(data['to_date'])
 
-        sql_query = '''SELECT biblio.title, biblio.author, items.barcode, issues.issuedate,
-                TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) )as name, borrowers.cardnumber,
-                borrowers.email,borrowers.phone,issues.date_due
-            FROM issues, borrowers, items, biblio
+
+        sql_query='''
+        (SELECT bib.title AS book_title, bib.author AS book_author, it.barcode,
+            TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) )as patron_name,
+            b.cardnumber, b.email, b.phone, issues.issuedate AS issuedate, issues.date_due AS duedate, issues.returndate
+            FROM issues
+            LEFT JOIN borrowers b ON (b.borrowernumber=issues.borrowernumber)
+            LEFT JOIN items it ON (it.itemnumber=issues.itemnumber)
+            LEFT JOIN biblio bib ON (bib.biblionumber=it.biblionumber)
             WHERE issues.issuedate BETWEEN \'{0}\' AND \'{1}\'
-            AND borrowers.borrowernumber=issues.borrowernumber
-            AND items.itemnumber=issues.itemnumber
-            AND biblio.biblionumber=items.biblionumber'''.format(data['from_date'],data['to_date'])
+        )
+        UNION ALL
+        (
+        SELECT bib.title, bib.author, it.barcode,
+            TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) )as name,
+            b.cardnumber, b.email, b.phone, old_issues.issuedate, old_issues.date_due, old_issues.returndate
+            FROM old_issues
+            LEFT JOIN borrowers b ON (b.borrowernumber=old_issues.borrowernumber)
+            LEFT JOIN items it ON (it.itemnumber=old_issues.itemnumber)
+            LEFT JOIN biblio bib ON (bib.biblionumber=it.biblionumber)
+            WHERE old_issues.issuedate BETWEEN \'{2}\' AND \'{3}\'
+        )
+        '''.format(data['from_date'],data['to_date'],data['from_date'],data['to_date'])
+
+
+        from_date = data['from_date']
+        to_date = data['to_date']
+
+        # sql_query = '''SELECT biblio.title, biblio.author, items.barcode, issues.issuedate,
+        #         TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) )as name, borrowers.cardnumber,
+        #         borrowers.email,borrowers.phone,issues.date_due
+        #     FROM issues, borrowers, items, biblio
+        #     WHERE issues.issuedate BETWEEN \'{0}\' AND \'{1}\'
+        #     AND borrowers.borrowernumber=issues.borrowernumber
+        #     AND items.itemnumber=issues.itemnumber
+        #     AND biblio.biblionumber=items.biblionumber'''.format(data['from_date'],data['to_date'])
+
 
         try:
             order_by = data.getlist('order_by')
@@ -83,24 +113,25 @@ class CirculationReport(View):
                 for order in order_by:
                     filter = str(order)+'_filter'
                     sql_query += 'LOWER({})'.format( str(order) ) + ' ' + data[filter] + ','
+
+            # Remove the last extra comma
+            sql_query = sql_query[:-1]
         except:
             # No order_by filter provided
             pass
-
-        # Remove the last extra comma
-        sql_query = sql_query[:-1]
 
 
         headings = [
             'Title of the book',
             'Author',
             'Barcode',
-            'Date and time of Issue',
             'Patron Name',
             'Membership Number',
             'Email ID',
             'Phone number',
-            'Due date'
+            'Issue Date',
+            'Due date',
+            'Return Date'
         ]
 
         print(sql_query)
@@ -108,15 +139,23 @@ class CirculationReport(View):
         try:
             cur.execute(sql_query)
 
+            count=0 #To count the total number of entries
+
             values = []
             for row in cur.fetchall():
-                print(row)
+                count+=1
+                row = list(row)
+                if not row[-1]:
+                    row[-1]='Not returned'
                 values.append(row)
 
             context = {
+                'count':count,
                 'values':values,
                 'headings':headings,
-                'report_type':'Circulation Report'
+                'report_type':'Circulation Report',
+                'from_date':from_date,
+                'to_date':to_date
             }
 
             # Save the data in request session
@@ -221,3 +260,123 @@ def profile(request):
 
 def demo(request):
     return JsonResponse(request.session['saved'])
+
+def checked_out(request):
+    # To return all the books that are currently checked out
+
+    sql_query = '''
+        SELECT biblio.title AS book_title, biblio.author AS book_author, items.barcode,
+        TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) )AS patron_name,
+        borrowers.cardnumber, borrowers.email, issues.issuedate AS issuedate, issues.date_due AS duedate
+        FROM issues
+        LEFT JOIN borrowers ON borrowers.borrowernumber = issues.borrowernumber
+        LEFT JOIN items ON items.itemnumber = issues.itemnumber
+        LEFT JOIN biblio ON biblio.biblionumber = items.biblionumber
+        '''
+
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+
+    print(sql_query)
+
+    try:
+        cur.execute(sql_query)
+
+        count=0 #To count the total number of entries
+
+        values = []
+        for row in cur.fetchall():
+            count+=1
+            values.append(row)
+
+        headings = [
+            'Title of the book',
+            'Author',
+            'Barcode',
+            'Patron Name',
+            'Membership Number',
+            'Email ID',
+            'Issue Date',
+            'Due date',
+        ]
+
+        context = {
+            'count':count,
+            'values':values,
+            'headings':headings,
+            'report_type':'Circulation Report - Books currently checked out'
+        }
+
+        return render(request, 'portal/checked_out.html', context)
+
+    except MySQLdb.Error as e:
+        print(e)
+        return JsonResponse({"message":"Unable to fetch data"})
+
+def report_types(request):
+    return render(request, 'portal/types.html')
+
+def inactive_patrons(request):
+    sql_query='''
+        SELECT TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
+        borrowers.cardnumber, borrowers.categorycode, borrowers.email
+        FROM borrowers
+        WHERE NOT EXISTS (
+            SELECT borrowernumber FROM statistics
+            WHERE borrowers.borrowernumber = borrowernumber)
+        '''
+
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+    try:
+        cur.execute(sql_query)
+
+        count=0 #To count the total number of entries
+
+        values = []
+        for row in cur.fetchall():
+            count+=1
+            print(row)
+            values.append(row)
+
+        headings = [
+            'Patron Name',
+            'Membership Number',
+            'Category Code',
+            'Email ID'
+        ]
+
+        context = {
+            'count':count,
+            'values':values,
+            'headings':headings,
+            'report_type':'Circulation Report - Inactive Patrons'
+        }
+
+    except MySQLdb.Error as e:
+        print(e)
+        return JsonResponse({'message':"Unable to fetch data"})
+
+    return render(request, 'portal/inactive_patrons.html', context=context)
+
+def inactive_books(request):
+    sql_query='''
+            SELECT biblio.title, biblio.author, items.barcode
+            FROM biblio, items
+            WHERE NOT EXISTS (
+                SELECT itemnumber FROM statistics
+                WHERE items.itemnumber = itemnumber)
+            AND biblio.biblionumber=items.biblionumber;
+            '''

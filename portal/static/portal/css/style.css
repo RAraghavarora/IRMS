@@ -2484,10 +2484,6 @@ section.content {
   .btn-link:active, .btn-link:focus {
     text-decoration: none;
     color: #333; }
-  .btn-link:hover {
-    text-decoration: none;
-    color: #333;
-    background-color: #ddd; }
 
 .btn-circle-lg {
   border: none;
