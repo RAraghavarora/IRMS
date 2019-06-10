@@ -22,7 +22,7 @@
 
   <body>
       <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
-      <h3 style="text-align: center"> {{report_type}} From: {{from_date}} To {{to_date}}</h3>
+      <h3 style="text-align: center"> {{report_type}} {% if from_date %} From: {{from_date}} To {{to_date}} {% endif %}</h3>
       <h3> <small> Total number of entries: {{count}} </small> </h3>
 
       <a href="{% url 'portal:demo' %}" class="btn btn-link" role="button">Generate a new report</a>
