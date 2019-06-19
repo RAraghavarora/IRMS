@@ -23,8 +23,21 @@
   <body>
       <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
 
+<br>
 
-      <div class="row clearfix">
+  <h3 style="text-align:center;"> Types of reports: </h3>
+
+  <div style="padding-top:50px; text-align:right;">
+      <form action="{% url 'portal:book_detail' %}" method="post">
+          {% csrf_token %}
+          {{ form.as_table }}
+          <input type="submit" />
+      </form>
+  </div>
+
+  <a href="{% url 'portal:profile' %}" class="btn btn-info" role="button">Go To Profile Page</a>
+
+      <div class="row clearfix" style="padding-top:20px">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
             <div class="card">
                 <div class="body">
@@ -32,15 +45,14 @@
 
                         <tbody>
                           <tr>
-                            <td> Checked out books </td>
+                            <td width="50%"> Checked out books </td>
                             <td><a href="{% url 'portal:checked_out' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
 
                           <tr>
-                            <td> Date filtered circulation report </td>
-                            <td> <a href="{% url 'portal:circulation' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                            <td> Date-wise Circulation Report  </td>
+                            <td><a href="{% url 'portal:circulation' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
-
 
                           <tr>
                             <td> Inactive Patrons </td>
@@ -50,6 +62,22 @@
                           <tr>
                             <td> Inactive Books </td>
                             <td> <a href="{% url 'portal:inactive_books' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+                          <tr>
+                            <td> Waiting Holds -<p style='color:red;'> Work In Progress </p> </td>
+                            <td> <a href="{% url 'portal:holds_waiting' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+                          <tr>
+                            <td> Generate No Due Certificate - For Members </td>
+                            <td> <a href="{% url 'portal:no_due' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                            <td> <a role="button" class="btn btn-danger" href="{% url 'portal:ndc_archive' %}">NDC Archive</a><br><br>
+                          </tr>
+
+                          <tr>
+                            <td> Generate No Due Certificate - For Non-Members </td>
+                            <td> <a href="{% url 'portal:no_due_non_members' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
 
                         </tbody>
@@ -62,6 +90,7 @@
 <!-- #END# Striped Rows -->
 
 
+    <script type="text/javascript" src="{% static 'jquery/js/jquery.js' %}"></script>
 
     <script src="{% static 'jquery/js/jquery.js' %}"></script>
     <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
@@ -83,6 +112,6 @@
 
     <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
     <script src="{% static 'bootstrap/js/bootstrap-select.js' %}"></script>
-
+    {{ form.media }}
   </body>
 </html>

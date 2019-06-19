@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    {% load static %}
+    <meta charset="utf-8">
+    <title>No Due Certificate</title>
+    <link href="{% static 'bootstrap/css/bootstrap.css' %}" rel="stylesheet">
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Azo Sans Regular";
+        font-size: 5mm;
+      }
+      html {
+        min-width: 100vw;
+        min-height: 100vh;
+      }
+      div#main {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      div.id {
+        width: 210mm;
+        height: 297mm;
+
+        position: relative;
+        border: 1px solid white;
+      }
+      div.id > img {
+        position: absolute;
+        top: 3mm;
+        left: 3.3cm;
+        width: 4.5cm;
+        height: 4.5cm;
+        opacity: 0.3;
+      }
+      div.button {
+        position: relative;
+        padding-left: 40px;
+      }
+      .img {
+        margin: 0.25cm 0.25cm;
+        background-position: center;
+        background-repeat: no-repeat;
+        flex: 1;
+      }
+      b {
+        font-size: 0.65cm;
+        font-family: "Azo Sans Medium"
+      }
+
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: center;
+        width: 100%
+      }
+    </style>
+
+
+  </head>
+
+  <body>
+
+    {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        {{ message }}
+      </div>
+    {% endfor %}
+    {% endif %}
+
+    <div id="main">
+      <div class="id">
+
+        <div class="heading-container" style="text-align:center; padding-top:10px">
+          <div class="heading" style="display: inline-block">
+            <span> Indira Gandhi Centre for Atomic Research </br>  <label style="padding-top:5px;"> Scientific Information Resource Division </label>
+              <label style="padding-top:5px;"> Kalpakkam</label>
+            </br>
+            </span>
+
+          </div>
+        </br>
+        </div>
+
+        <span style="position: absolute; top:120px; left:10px">
+          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{report_number}}
+        </span>
+
+
+        <span style="position: absolute; top:120px; right:20px">
+           Date: {{date}}
+        </span>
+
+        <div style="text-align:center">
+          <label> <b> <u> NO DUE CERTIFICATE </b> </u> </label>
+        </div>
+        <br>
+
+
+        <div style="padding: 15px">
+          <p> This is to inform you that there is nothing outstanding against the following member(s). This may be treated as NO DUE CERTIFICATE. This is issued with reference to your communication cited below. </p>
+        </br>
+
+          <table>
+            <thead>
+              <thead>
+                <tr>
+                  <th> Sl. No. </th>
+                  <th> Report Number </th>
+                  <th> Name of the Employee [Dr./Shri./Smt./Kum.]</th>
+                  <th> IC No. </th>
+                  <th> Div./Group </th>
+                  <th> Lib. Mem. No. </th>
+                  <th> Lib. Ref. No. </th>
+                  <th> Ref. No./Date </th>
+                <th>
+              </thead>
+              <tbody>
+                {% for data_value in valid_data %}
+                <tr>
+                  <td> {{forloop.counter}} </td>
+                  <td> {{report_number }} </td>
+                  <td> {{data_value.0}} </td>
+                  <td> {{data_value.1}} </td>
+                  <td> {{data_value.2}}</td>
+                  <td> Non Mem. </td>
+                  <td> {{data_value.3}} </td>
+                  <td style="word-wrap: break-word"> {{data_value.4}} </td>
+                </tr>
+                {% endfor %}
+            </thead>
+          </table>
+
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+
+        <div style="position: relative; text-align:right;">
+          <span >
+            (V. Rajendran)
+            <br>
+            (Head, LISS / SIRD)
+          </span>
+        </div>
+
+        <div style="position:relative; text-align: left">
+          <span style="position: relative;">
+            (S. Rajeswari)
+            <br>
+            (Head, SIRD)
+          </span>
+        </div>
+
+
+        <div  style="position:relative;  text-align: left;">
+          <label>
+            <pre>{{addressee.content}}</pre>
+          </label>
+        </div>
+
+
+      </div>
+
+    </div>
+
+    <div class="button" style="padding-top:400px">
+      <a role="button" class="btn btn-success" href="{% url 'portal:non_member_save' %}">Save information</a>
+    </div>
+  </div>
+
+    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
+
+
+  </body>
+</html>

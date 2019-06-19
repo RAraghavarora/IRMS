@@ -21,28 +21,36 @@
 
 </head>
 
-<body class="theme-cyan">
-    <div class="overlay"></div>
-    <!-- Top Bar -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
-                <!-- <a href="javascript:void(0);" class="bars"></a> -->
-                <a class="navbar-brand">IRMS | IGCAR</a>
-            </div>
-            <nav class="right-nav" >
-              <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
-              <!-- <a href="javascript:void(0);" class="bars"></a> -->
-              <a class="navbar-brand" href="{% url 'portal:logout' %}">Logout</a>
-            </nav>
-        </div>
-    </nav>
-    {% block content %}
-    {% endblock %}
-<!--
-    <script src="{% static 'portal/js/index.js' %}"></script>
+<body style="padding-top: 100px;" class="theme-cyan">
+
+  <div class="overlay"></div>
+  <!-- Top Bar -->
+  <nav class="navbar">
+    <div class="container-fluid">
+      <div class="navbar-header">
+        <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
+        <!-- <a href="javascript:void(0);" class="bars"></a> -->
+        <a class="navbar-brand">IRMS | IGCAR</a>
+      </div>
+      <nav class="right-nav" >
+        <a href="javascript:void(0);" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"></a>
+        <!-- <a href="javascript:void(0);" class="bars"></a> -->
+        <a class="navbar-brand" href="{% url 'portal:logout' %}">Logout</a>
+      </nav>
+    </div>
+  </nav>
+  <div style="padding-left:20px">
+    <a role="button" class="btn btn-info" href="{% url 'portal:report_types' %}">Reports Home</a>
+    &nbsp;
+    <a role="button" class="btn btn-info" href="{% url 'portal:profile' %}">Home</a>
+  </div>
+
+    {% block content %}{% endblock %}
     <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
+    <script src="{% static 'portal/js/script.js' %}"></script>
+
+<!--
     <script src="{% static 'portal/js/jquery.slimscroll.js' %}"></script>
     <script src="{% static 'node-waves/waves.js' %}"></script>
     <script src="{% static 'portal/js/admin.js' %}"></script>

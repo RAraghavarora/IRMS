@@ -1,0 +1,85 @@
+{% extends 'portal/base.html' %}
+{% block content %}
+
+<div class="card">
+    <div class="header" >
+        <h1>IRMS | IGCAR </h1>
+        <div class="error" style="background-color:#DB3B21">
+            {% if invalid %}
+            <h5 style="color:white"> The following IC numbers entered are invalid </h5>
+            <ul>
+              {% for invalid_no in invalid %}
+              <li style="color:#FDFDFD"> {{invalid_no}} </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+              </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+      </br></br>
+        <h2>
+            Generate No Due Certificate
+        </h2>
+    </div>
+
+
+    <form method="POST" action="{% url 'portal:no_due' %}">
+    {% csrf_token %}
+    <div class="body">
+    {% csrf_token %}
+        <div class="table-responsive">
+
+          <label for="addressee">Choose the addressee </label>
+          <select name="addressee">
+            <option disabled="disabled" selected="true"> Choose the addressee </option>
+            {% for addressee in addressee_list %}
+            <option value={{addressee.id}}>{{addressee.code}}</option>
+            {% endfor %}
+          </select>
+
+          <br><br><br><br>
+
+          <div class="row-clearfix">
+            <div class="col-sm-4">
+                <label for="position">Enter IC number:</label>
+                <input type="text" style="width: 10.5cm" id="position" class="form-control" placeholder="IC number" name="ic_no">
+            </div>
+          </div>
+
+            <div class="row-clearfix">
+              <div class="col-sm-4">
+                  <label for="position">Enter Ref No. / Date:</label>
+                  <input type="text" style="width: 10.5cm" id="position" class="form-control" placeholder="Ref No./ Date" name="ref_no_date">
+              </div>
+
+          </div>
+          <br><br><br><br>
+          <div class="row-clearfix" style="padding-left: 3mm">
+            <div id="member-add" >
+            </div>
+          </div>
+
+
+
+            <br><br><br><br><br>
+            <button type="button" id="add-field" class="btn btn-primary m-t-15 waves-effect">Add a new IC number</button>
+
+            <div style="text-align:center">
+              <button type="submit" class="btn btn-primary m-t-15 waves-effect">Submit</button>
+            </div>
+    </form>
+
+
+    </div>
+</div>
+
+{% endblock %}

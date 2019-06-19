@@ -1,0 +1,18 @@
+{# Don't forget that one ! #}
+{% load static %}
+
+{% block content %}
+<div style="padding-top:50px; text-align:center;">
+    <form action="" method="post">
+        {% csrf_token %}
+        {{ form.as_table }}
+        <input type="submit" />
+    </form>
+</div>
+{% endblock %}
+
+{% block footer %}
+<script type="text/javascript" src="{% static 'jquery/js/jquery.js' %}"></script>
+
+{{ form.media }}
+{% endblock %}

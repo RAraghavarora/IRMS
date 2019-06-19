@@ -9,11 +9,46 @@
       <meta http-equiv="X-UA-Compatible" content="ie=edge">
       <link href="{% static 'bootstrap/css/bootstrap.css' %}" rel="stylesheet">
       <link href="{% static 'bootstrap/css/bootstrap-select.css' %}" rel="stylesheet">
-
       <link rel="stylesheet" href="{% static 'portal/css/style.css' %}">
       <link rel="stylesheet" href="{% static 'portal/css/all-themes.css' %}">
       <link href="{% static 'portal/css/dataTables.bootstrap.css' %}" rel="stylesheet">
       <link rel="stylesheet" href="http://code.jquery.com/ui/1.8.18/themes/base/jquery-ui.css" type="text/css" media="all" />
+
+
+      <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+      <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+      <script>
+      $( function he() {
+        var availableTags = [
+          "ActionScript",
+          "AppleScript",
+          "Asp",
+          "BASIC",
+          "C",
+          "C++",
+          "Clojure",
+          "COBOL",
+          "ColdFusion",
+          "Erlang",
+          "Fortran",
+          "Groovy",
+          "Haskell",
+          "Java",
+          "JavaScript",
+          "Lisp",
+          "Perl",
+          "PHP",
+          "Python",
+          "Ruby",
+          "Scala",
+          "Scheme"
+        ];
+        $( "#search-books" ).autocomplete({
+          source: availableTags
+        });
+      } );
+      </script>
 
       <title> IRMS - IGCAR</title>
   </head>
@@ -24,13 +59,20 @@
         <small> <u>Search for books</u> </small>
       </h1>
 
-      </br></br>
+
+      <div class="ui-widget">
+        <label for="search-books"> Search: </label>
+        <input id="search-books" type="text" class="form-control" placeholder="Search Books" onkeyup="he">
+      </div>
+
+
+      <!-- </br></br>
       <a class="hello" href="#" onclick="searcher()">HELLO</a>
-      <ol><span id="myText"></span></ol>
+      <ol><span id="myText"></span></ol> -->
 
       <form id="search" method="POST" action="{% url 'portal:search' %}">
           {% csrf_token %}
-          <input type="text" onkeyup="searcher(this.value)" class="form-control" id="book_search" name="search" style="border: 1px solid #ce93d8;" placeholder="Search" aria-label="search"/>
+          <input type="text" onkeyup="searcher(this.value)" class="form-control" id="book_search" name="search-books" style="border: 1px solid #ce93d8;" placeholder="Search" aria-label="search"/>
           <ul id="search-results"></ul>
           <button type=”submit” class=”btn btn-default btn-submit”>Search!</button>
       </form>
@@ -43,6 +85,15 @@
       <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"> </script>
       <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
       <script src="{% static 'portal/js/search.js' %}" type="text/javascript"> </script>
+      <script>
+        $(document).ready(function(){
+          $("#country").autocomplete("ajaxcomplete.php", {
+          selectFirst: true
+          });
+        });
+      </script>
+
+
 
   </body>
 

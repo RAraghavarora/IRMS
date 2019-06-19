@@ -152,7 +152,7 @@ class Aqbasketgroups(models.Model):
 
 
 class Aqbasketusers(models.Model):
-    basketno = models.ForeignKey(Aqbasket, models.DO_NOTHING, db_column='basketno', primary_key=True)
+    basketno = models.OneToOneField(Aqbasket, models.DO_NOTHING, db_column='basketno', primary_key=True)
     borrowernumber = models.ForeignKey('Borrowers', models.DO_NOTHING, db_column='borrowernumber')
 
     class Meta:
@@ -194,7 +194,7 @@ class Aqbooksellers(models.Model):
 
 
 class Aqbudgetborrowers(models.Model):
-    budget = models.ForeignKey('Aqbudgets', models.DO_NOTHING, primary_key=True)
+    budget = models.OneToOneField('Aqbudgets', models.DO_NOTHING, primary_key=True)
     borrowernumber = models.ForeignKey('Borrowers', models.DO_NOTHING, db_column='borrowernumber')
 
     class Meta:
@@ -320,7 +320,7 @@ class Aqinvoices(models.Model):
 
 
 class AqorderUsers(models.Model):
-    ordernumber = models.ForeignKey('Aqorders', models.DO_NOTHING, db_column='ordernumber', primary_key=True)
+    ordernumber = models.OneToOneField('Aqorders', models.DO_NOTHING, db_column='ordernumber', primary_key=True)
     borrowernumber = models.ForeignKey('Borrowers', models.DO_NOTHING, db_column='borrowernumber')
 
     class Meta:
@@ -398,8 +398,8 @@ class AqordersItems(models.Model):
 
 
 class AqordersTransfers(models.Model):
-    ordernumber_from = models.ForeignKey(Aqorders, models.DO_NOTHING, related_name='transfers_given', db_column='ordernumber_from', unique=True, blank=True, null=True)
-    ordernumber_to = models.ForeignKey(Aqorders, models.DO_NOTHING, related_name='transfers_received', db_column='ordernumber_to', unique=True, blank=True, null=True)
+    ordernumber_from = models.OneToOneField(Aqorders, models.DO_NOTHING, related_name='transfers_given', db_column='ordernumber_from', unique=True, blank=True, null=True)
+    ordernumber_to = models.OneToOneField(Aqorders, models.DO_NOTHING, related_name='transfers_received', db_column='ordernumber_to', unique=True, blank=True, null=True)
     timestamp = models.DateTimeField()
 
     class Meta:
@@ -486,7 +486,7 @@ class AuthPermission(models.Model):
 
 
 class AuthSubfieldStructure(models.Model):
-    authtypecode = models.ForeignKey('AuthTypes', models.DO_NOTHING, db_column='authtypecode', primary_key=True)
+    authtypecode = models.OneToOneField('AuthTypes', models.DO_NOTHING, db_column='authtypecode', primary_key=True)
     tagfield = models.CharField(max_length=3)
     tagsubfield = models.CharField(max_length=1)
     liblibrarian = models.CharField(max_length=255)
@@ -511,7 +511,7 @@ class AuthSubfieldStructure(models.Model):
 
 
 class AuthTagStructure(models.Model):
-    authtypecode = models.ForeignKey('AuthTypes', models.DO_NOTHING, db_column='authtypecode', primary_key=True)
+    authtypecode = models.OneToOneField('AuthTypes', models.DO_NOTHING, db_column='authtypecode', primary_key=True)
     tagfield = models.CharField(max_length=3)
     liblibrarian = models.CharField(max_length=255)
     libopac = models.CharField(max_length=255)
@@ -631,7 +631,7 @@ class BiblioFramework(models.Model):
 
 
 class BiblioMetadata(models.Model):
-    biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber')
+    biblionumber = models.OneToOneField(Biblio, models.DO_NOTHING, db_column='biblionumber')
     format = models.CharField(max_length=16)
     marcflavour = models.CharField(max_length=16)
     metadata = models.TextField()
@@ -774,7 +774,7 @@ class BorrowerMessagePreferences(models.Model):
 
 
 class BorrowerMessageTransportPreferences(models.Model):
-    borrower_message_preference = models.ForeignKey(BorrowerMessagePreferences, models.DO_NOTHING, primary_key=True)
+    borrower_message_preference = models.OneToOneField(BorrowerMessagePreferences, models.DO_NOTHING, primary_key=True)
     message_transport_type = models.ForeignKey('MessageTransportTypes', models.DO_NOTHING, db_column='message_transport_type')
 
     class Meta:
@@ -947,6 +947,18 @@ class Borrowers(models.Model):
     login_attempts = models.IntegerField(blank=True, null=True)
     overdrive_auth_token = models.TextField(blank=True, null=True)
 
+    @property
+    def full_name(self):
+        fullname = ""
+        if self.firstname:
+            fullname += self.firstname
+            if self.surname:
+                fullname += " " + self.surname
+        elif self.surname:
+            fullname += self.surname
+
+        return fullname
+
     class Meta:
         verbose_name_plural = 'Borrowers'
         managed = False
@@ -957,8 +969,8 @@ class Borrowers(models.Model):
 
 
 class BranchBorrowerCircRules(models.Model):
+    categorycode = models.OneToOneField('Categories', models.DO_NOTHING, db_column='categorycode', primary_key=True)
     branchcode = models.ForeignKey('Branches', models.DO_NOTHING, db_column='branchcode')
-    categorycode = models.ForeignKey('Categories', models.DO_NOTHING, db_column='categorycode', primary_key=True)
     maxissueqty = models.IntegerField(blank=True, null=True)
     maxonsiteissueqty = models.IntegerField(blank=True, null=True)
 
@@ -969,8 +981,8 @@ class BranchBorrowerCircRules(models.Model):
 
 
 class BranchItemRules(models.Model):
+    itemtype = models.OneToOneField('Itemtypes', models.DO_NOTHING, db_column='itemtype', primary_key=True)
     branchcode = models.ForeignKey('Branches', models.DO_NOTHING, db_column='branchcode')
-    itemtype = models.ForeignKey('Itemtypes', models.DO_NOTHING, db_column='itemtype', primary_key=True)
     holdallowed = models.IntegerField(blank=True, null=True)
     hold_fulfillment_policy = models.CharField(max_length=13)
     returnbranch = models.CharField(max_length=15, blank=True, null=True)
@@ -1028,7 +1040,7 @@ class Branches(models.Model):
 
 
 class BranchesOverdrive(models.Model):
-    branchcode = models.ForeignKey(Branches, models.DO_NOTHING, db_column='branchcode', primary_key=True)
+    branchcode = models.OneToOneField(Branches, models.DO_NOTHING, db_column='branchcode', primary_key=True)
     authname = models.CharField(max_length=255)
 
     class Meta:
@@ -1280,7 +1292,7 @@ class ColumnsSettings(models.Model):
 
 
 class CourseInstructors(models.Model):
-    course = models.ForeignKey('Courses', models.DO_NOTHING, primary_key=True)
+    course = models.OneToOneField('Courses', models.DO_NOTHING, primary_key=True)
     borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber')
 
     class Meta:
@@ -1291,7 +1303,7 @@ class CourseInstructors(models.Model):
 
 class CourseItems(models.Model):
     ci_id = models.AutoField(primary_key=True)
-    itemnumber = models.ForeignKey('Items', models.DO_NOTHING, db_column='itemnumber', unique=True)
+    itemnumber = models.OneToOneField('Items', models.DO_NOTHING, db_column='itemnumber', unique=True)
     itype = models.CharField(max_length=10, blank=True, null=True)
     ccode = models.CharField(max_length=80, blank=True, null=True)
     holdingbranch = models.ForeignKey(Branches, models.DO_NOTHING, db_column='holdingbranch', blank=True, null=True)
@@ -1424,7 +1436,7 @@ class Currency(models.Model):
 
 
 class DefaultBorrowerCircRules(models.Model):
-    categorycode = models.ForeignKey(Categories, models.DO_NOTHING, db_column='categorycode', primary_key=True)
+    categorycode = models.OneToOneField(Categories, models.DO_NOTHING, db_column='categorycode', primary_key=True)
     maxissueqty = models.IntegerField(blank=True, null=True)
     maxonsiteissueqty = models.IntegerField(blank=True, null=True)
 
@@ -1434,7 +1446,7 @@ class DefaultBorrowerCircRules(models.Model):
 
 
 class DefaultBranchCircRules(models.Model):
-    branchcode = models.ForeignKey(Branches, models.DO_NOTHING, db_column='branchcode', primary_key=True)
+    branchcode = models.OneToOneField(Branches, models.DO_NOTHING, db_column='branchcode', primary_key=True)
     maxissueqty = models.IntegerField(blank=True, null=True)
     maxonsiteissueqty = models.IntegerField(blank=True, null=True)
     holdallowed = models.IntegerField(blank=True, null=True)
@@ -1447,7 +1459,7 @@ class DefaultBranchCircRules(models.Model):
 
 
 class DefaultBranchItemRules(models.Model):
-    itemtype = models.ForeignKey('Itemtypes', models.DO_NOTHING, db_column='itemtype', primary_key=True)
+    itemtype = models.OneToOneField('Itemtypes', models.DO_NOTHING, db_column='itemtype', primary_key=True)
     holdallowed = models.IntegerField(blank=True, null=True)
     hold_fulfillment_policy = models.CharField(max_length=13)
     returnbranch = models.CharField(max_length=15, blank=True, null=True)
@@ -1786,9 +1798,9 @@ class Fieldmapping(models.Model):
 
 
 class HoldFillTargets(models.Model):
+    itemnumber = models.OneToOneField('Items', models.DO_NOTHING, db_column='itemnumber', primary_key=True)
     borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber')
     biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber')
-    itemnumber = models.ForeignKey('Items', models.DO_NOTHING, db_column='itemnumber', primary_key=True)
     source_branchcode = models.ForeignKey(Branches, models.DO_NOTHING, db_column='source_branchcode', blank=True, null=True)
     item_level_request = models.IntegerField()
 
@@ -1798,7 +1810,7 @@ class HoldFillTargets(models.Model):
 
 
 class HouseboundProfile(models.Model):
-    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
+    borrowernumber = models.OneToOneField(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
     day = models.TextField()
     frequency = models.TextField()
     fav_itemtypes = models.TextField(blank=True, null=True)
@@ -1813,7 +1825,7 @@ class HouseboundProfile(models.Model):
 
 
 class HouseboundRole(models.Model):
-    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, primary_key=True)
+    borrowernumber = models.OneToOneField(Borrowers, models.DO_NOTHING, primary_key=True)
     housebound_chooser = models.IntegerField()
     housebound_deliverer = models.IntegerField()
 
@@ -1847,7 +1859,7 @@ class Illcomments(models.Model):
 
 
 class Illrequestattributes(models.Model):
-    illrequest = models.ForeignKey('Illrequests', models.DO_NOTHING, primary_key=True)
+    illrequest = models.OneToOneField('Illrequests', models.DO_NOTHING, primary_key=True)
     type = models.CharField(max_length=200)
     value = models.TextField()
     readonly = models.IntegerField()
@@ -1981,7 +1993,7 @@ class ImportRecords(models.Model):
 class Issues(models.Model):
     issue_id = models.AutoField(primary_key=True)
     borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', blank=True, null=True)
-    itemnumber = models.ForeignKey('Items', models.DO_NOTHING, related_name='issues_set', db_column='itemnumber', unique=True, blank=True, null=True)
+    itemnumber = models.OneToOneField('Items', models.DO_NOTHING, related_name='issues_set', db_column='itemnumber', unique=True, blank=True, null=True)
     date_due = models.DateTimeField(blank=True, null=True)
     branchcode = models.CharField(max_length=10, blank=True, null=True)
     returndate = models.DateTimeField(blank=True, null=True)
@@ -2107,9 +2119,40 @@ class Items(models.Model):
         managed = False
         db_table = 'items'
 
+    @property
+    def full_title(self):
+        import MySQLdb
+        db = MySQLdb.connect(
+            host="localhost",
+            user="root",
+            passwd="igcarlibrary",
+            db="library"
+        )
+        cur = db.cursor()
+        sql_query = '''
+            SELECT concat( biblio.title, ' ', ExtractValue((
+                    SELECT metadata
+                    FROM biblio_metadata b2
+                    WHERE biblio.biblionumber = b2.biblionumber),
+                      '//datafield[@tag="245"]/subfield[@code="b"]') )
+            FROM biblio
+            WHERE biblio.biblionumber = {}
+            '''.format(self.biblionumber.biblionumber)
+        try:
+            cur.execute(sql_query)
+        except:
+            print(sql_query)
+        return str(cur.fetchone()[0])
+
+    def __str__(self):
+        if self.barcode:
+            return str(self.full_title) + ' - ' + str(self.barcode)
+        else:
+            return str(self.full_title)
+
 
 class ItemsLastBorrower(models.Model):
-    itemnumber = models.ForeignKey(Items, models.DO_NOTHING, db_column='itemnumber', unique=True)
+    itemnumber = models.OneToOneField(Items, models.DO_NOTHING, db_column='itemnumber', unique=True)
     borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber')
     created_on = models.DateTimeField()
 
@@ -2441,7 +2484,7 @@ class MessageTransportTypes(models.Model):
 
 
 class MessageTransports(models.Model):
-    message_attribute = models.ForeignKey(MessageAttributes, models.DO_NOTHING, primary_key=True)
+    message_attribute = models.OneToOneField(MessageAttributes, models.DO_NOTHING, primary_key=True)
     message_transport_type = models.ForeignKey(MessageTransportTypes, models.DO_NOTHING, db_column='message_transport_type')
     is_digest = models.IntegerField()
     letter_module = models.CharField(max_length=20)
@@ -2673,7 +2716,7 @@ class PatronLists(models.Model):
 
 
 class Patronimage(models.Model):
-    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
+    borrowernumber = models.OneToOneField(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
     mimetype = models.CharField(max_length=15)
     imagefile = models.TextField()
 
@@ -2698,7 +2741,7 @@ class PendingOfflineOperations(models.Model):
 
 
 class Permissions(models.Model):
-    module_bit = models.ForeignKey('Userflags', models.DO_NOTHING, db_column='module_bit', primary_key=True)
+    module_bit = models.OneToOneField('Userflags', models.DO_NOTHING, db_column='module_bit', primary_key=True)
     code = models.CharField(max_length=64)
     description = models.CharField(max_length=255, blank=True, null=True)
 
@@ -2758,7 +2801,7 @@ class Quotes(models.Model):
 
 
 class Ratings(models.Model):
-    borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
+    borrowernumber = models.OneToOneField(Borrowers, models.DO_NOTHING, db_column='borrowernumber', primary_key=True)
     biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber')
     rating_value = models.IntegerField()
     timestamp = models.DateTimeField()
@@ -2910,7 +2953,7 @@ class SearchMarcMap(models.Model):
 
 
 class SearchMarcToField(models.Model):
-    search_marc_map = models.ForeignKey(SearchMarcMap, models.DO_NOTHING, primary_key=True)
+    search_marc_map = models.OneToOneField(SearchMarcMap, models.DO_NOTHING, primary_key=True)
     search_field = models.ForeignKey(SearchField, models.DO_NOTHING)
     facet = models.IntegerField(blank=True, null=True)
     suggestible = models.IntegerField(blank=True, null=True)
@@ -2945,7 +2988,7 @@ class Serial(models.Model):
 
 
 class Serialitems(models.Model):
-    itemnumber = models.ForeignKey(Items, models.DO_NOTHING, db_column='itemnumber', primary_key=True)
+    itemnumber = models.OneToOneField(Items, models.DO_NOTHING, db_column='itemnumber', primary_key=True)
     serialid = models.ForeignKey(Serial, models.DO_NOTHING, db_column='serialid')
 
     class Meta:
@@ -3020,7 +3063,7 @@ class Statistics(models.Model):
 
 
 class Stockrotationitems(models.Model):
-    itemnumber = models.ForeignKey(Items, models.DO_NOTHING, primary_key=True)
+    itemnumber = models.OneToOneField(Items, models.DO_NOTHING, primary_key=True)
     stage = models.ForeignKey('Stockrotationstages', models.DO_NOTHING)
     indemand = models.IntegerField()
     fresh = models.IntegerField()
@@ -3256,7 +3299,7 @@ class TagsApproval(models.Model):
 
 
 class TagsIndex(models.Model):
-    term = models.ForeignKey(TagsApproval, models.DO_NOTHING, db_column='term', primary_key=True)
+    term = models.OneToOneField(TagsApproval, models.DO_NOTHING, db_column='term', primary_key=True)
     biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber')
     weight = models.IntegerField()
 
@@ -3289,7 +3332,7 @@ class TmpHoldsqueue(models.Model):
 
 
 class TransportCost(models.Model):
-    frombranch = models.ForeignKey(Branches, models.DO_NOTHING, db_column='frombranch', related_name='sources_transport_costs', primary_key=True)
+    frombranch = models.OneToOneField(Branches, models.DO_NOTHING, db_column='frombranch', related_name='sources_transport_costs', primary_key=True)
     tobranch = models.ForeignKey(Branches, models.DO_NOTHING, db_column='tobranch', related_name='destination_transport_costs')
     cost = models.DecimalField(max_digits=6, decimal_places=2)
     disable_transfer = models.IntegerField()
@@ -3437,3 +3480,27 @@ class Zebraqueue(models.Model):
 
 
 # Total 215 models
+
+class NoDueCertificate(models.Model):
+    report_number = models.IntegerField(blank=True)
+    patron_name = models.CharField(max_length=50)
+    ic_number = models.CharField(max_length=50)
+    division = models.CharField(max_length=50)
+    mem_number = models.CharField(max_length=20)
+    ref_number = models.IntegerField(blank=True)
+    ref_no_date = models.CharField(max_length=50)
+    date = models.DateField(auto_now=True)
+    addressee_content = models.TextField(max_length=100)
+
+
+    def __str__(self):
+        return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
+
+from ckeditor.fields import RichTextField
+
+class NoDueAddressee(models.Model):
+    code = models.CharField(max_length=15)
+    content = models.TextField(max_length=100)
+
+    def __str__(self):
+        return self.code
