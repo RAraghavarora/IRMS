@@ -3490,17 +3490,24 @@ class NoDueCertificate(models.Model):
     ref_number = models.IntegerField(blank=True)
     ref_no_date = models.CharField(max_length=50)
     date = models.DateField(auto_now=True)
-    addressee_content = models.TextField(max_length=100)
+    addressee = models.ForeignKey('NoDueAddressee', related_name='ndcs', on_delete=models.SET_NULL, null=True)
 
 
     def __str__(self):
         return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
 
+    class Meta:
+        db_table = 'no_due_certificate'
+
 from ckeditor.fields import RichTextField
 
 class NoDueAddressee(models.Model):
     code = models.CharField(max_length=15)
-    content = models.TextField(max_length=100)
+    content = models.TextField(max_length=200)
+    ref_number = models.IntegerField()
 
     def __str__(self):
         return self.code
+
+    class Meta:
+        db_table = 'no_due_addressee'

@@ -44,17 +44,17 @@
                     <table class="table table-bordered js-exportable" id='example'>
 
                         <tbody>
+                          {% for ndc in ndcs %}
                           <form method='POST' action='{% url 'portal:ndc_archive' %}'>
                             {% csrf_token %}
-                            {% for ndc in ndcs %}
                             <tr>
-                              <td style="text-align:center;" width="30%"> Report - {{ndc.report_number}} </td>
-                              <td style="text-align:center;" width="35%"> {{ndc.date}} </td>
-                              <input type="hidden" value={{ndc.id}} name="ndc_id">
+                              <td style="text-align:center;" width="30%"> Report - {{ndc.0}} </td>
+                              <td style="text-align:center;" width="35%"> {{ndc.1}} </td>
                               <td><input type="submit" value="Click here"> </td>
+                              <input type="hidden" value={{ndc.0}} name="ndc_rn"> </input>
                             </tr>
-                            {% endfor %}
                           </form>
+                          {% endfor %}
                         </tbody>
 
                     </table>

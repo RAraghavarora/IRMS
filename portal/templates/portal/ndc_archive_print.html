@@ -14,6 +14,11 @@
         font-family: "Azo Sans Regular";
         font-size: 5mm;
       }
+      pre {
+        font-family: "Azo Sans Regular";
+        font-size: 5mm;
+        font-weight: bold;
+      }
       html {
         min-width: 100vw;
         min-height: 100vh;
@@ -57,9 +62,8 @@
 
       table, th, td {
         border: 1px solid black;
-        border-collapse: collapse;
         text-align: center;
-        width: 100%
+        border-collapse: separate;
       }
     </style>
 
@@ -80,7 +84,7 @@
     {% endif %}
 
     <div id="main">
-      <div class="id">
+      <div class="id" id="printable">
 
         <div class="heading-container" style="text-align:center; padding-top:10px">
           <div class="heading" style="display: inline-block">
@@ -93,15 +97,17 @@
         </br>
         </div>
 
-        <span style="position: absolute; top:120px; left:10px">
-          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{report_number}}
-        </span>
-
-
-        <span style="position: absolute; top:120px; right:20px">
-           Date: {{date}}
-        </span>
-
+<br>
+        <h3 style="display: none"> {{message}}</h3>
+        <div>
+          <span style="float: left">
+            Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{addressee.ref_number}}/{{report_number}}
+          </span>
+          <span style="float: right">
+            Date: {{date}}
+          </span>
+        </div>
+<br><br>
         <div style="text-align:center">
           <label> <b> <u> NO DUE CERTIFICATE </b> </u> </label>
         </div>
@@ -121,22 +127,22 @@
                   <th> Name of the Employee [Dr./Shri./Smt./Kum.]</th>
                   <th> IC No. </th>
                   <th> Div./Group </th>
-                  <th> Lib. Mem. No. </th>
+                  <th> Lib. Ref. No. </th>
                   <th> Lib. Ref. No. </th>
                   <th> Ref. No./Date </th>
-                <th>
+                </tr>
               </thead>
               <tbody>
-                {% for data_value in valid_data %}
+                {% for ndc in ndcs %}
                 <tr>
-                  <td> {{forloop.counter}} </td>
-                  <td> {{report_number }} </td>
-                  <td> {{data_value.0.full_name}}</td>
-                  <td> {{data_value.0.sort1}}</td>
-                  <td> {{data_value.0.address}}
-                  <td> {{data_value.0.cardnumber}} </td>
-                  <td> {{data_value.1}}</td>
-                  <td style="word-wrap: break-word"> {{data_value.2}} </td>
+                  <td style="border-collapse: collapse;"> {{forloop.counter}} </td>
+                  <td style="border-collapse: collapse;"> {{ndc.report_number}} </td>
+                  <td style="border-collapse: collapse;"> {{ndc.patron_name}} </td>
+                  <td style="border-collapse: collapse;"> {{ndc.ic_number}}</td>
+                  <td style="border-collapse: collapse;"> {{ndc.division}} </td>
+                  <td style="border-collapse: collapse;"> {{ndc.mem_number}} </td>
+                  <td style="border-collapse: collapse;"> {{ndc.ref_number}}</td>
+                  <td style="border-collapse: collapse;"> {{ndc.ref_no_date}}</td>
                 </tr>
                 {% endfor %}
             </thead>
@@ -149,44 +155,73 @@
         </br>
         </br>
 
-        <div style="position: relative; text-align:right;">
+
+        <div style="font-weight: bold; position: relative; text-align:right;">
           <span >
-            (V. Rajendran)
+            (Officer Incharge)
             <br>
             (Head, LISS / SIRD)
           </span>
         </div>
 
         <div style="position:relative; text-align: left">
-          <span style="position: relative;">
+          <span style="position: relative; font-weight:bold ">
             (S. Rajeswari)
             <br>
             (Head, SIRD)
           </span>
         </div>
 
-
         <div  style="position:relative;  text-align: left;">
           <label>
-            <pre style="font-style: italic">{{addressee.content}}</pre>
+            <pre style='font-family: "Azo Sans Regular"; font-weight:bold'>{{addressee.content}}</pre>
           </label>
         </div>
-
 
       </div>
 
     </div>
 
+
     <div class="button" style="padding-top:400px">
-      <a role="button" class="btn btn-success" href="{% url 'portal:no_due_save' %}">Save information</a><br><br>
+      <a role="button" class="btn btn-success" onclick="printDiv('printable')">Print</a><br><br>
       <a role="button" class="btn btn-info" href="{% url 'portal:report_types' %}">Reports Home</a>
     </div>
-  </div>
 
-    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
-    <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
 
+
+      <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+      <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
+
+    </div>
 
 
   </body>
+  <script type="text/javascript">
+
+  function printDiv(divName) {
+    var htmlToPrint = '' +
+        '<style type="text/css">' +
+        'table {' +
+        'border: 1px solid black;' +
+        'border-collapse: collapse;' +
+        '}' +
+        'td {' +
+        'border: 1px solid black;' +
+        'border-color: black;' +
+        '}' +
+        'th {' +
+        'border: 1px solid black;' +
+        'border-color: black;' +
+        '}' +
+        '</style>';
+    console.log(divName)
+    var printContents = htmlToPrint + document.getElementById(divName).innerHTML;
+
+    w=window.open();
+    w.document.write(printContents);
+    w.print();
+    w.close();
+  }
+  </script>
 </html>

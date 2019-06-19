@@ -14,6 +14,11 @@
         font-family: "Azo Sans Regular";
         font-size: 5mm;
       }
+      pre {
+        font-family: "Azo Sans Regular";
+        font-size: 5mm;
+        font-weight: bold;
+      }
       html {
         min-width: 100vw;
         min-height: 100vh;
@@ -151,7 +156,7 @@
         </br>
 
 
-        <div style="position: relative; text-align:right;">
+        <div style="font-weight: bold; position: relative; text-align:right;">
           <span >
             (Officer Incharge)
             <br>
@@ -160,17 +165,16 @@
         </div>
 
         <div style="position:relative; text-align: left">
-          <span style="position: relative;">
+          <span style="position: relative; font-weight:bold ">
             (S. Rajeswari)
             <br>
             (Head, SIRD)
           </span>
         </div>
 
-
         <div  style="position:relative;  text-align: left;">
           <label>
-            <pre>{{addressee.content}}</pre>
+            <pre style='font-family: "Azo Sans Regular"; font-weight:bold'>{{addressee.content}}</pre>
           </label>
         </div>
 
@@ -188,7 +192,7 @@
 
       <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
       <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
-      
+
     </div>
 
 

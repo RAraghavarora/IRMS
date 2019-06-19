@@ -858,7 +858,7 @@ def no_due_save(request):
             ref_number = ref_number,
             ref_no_date = ref_no_date,
             date=datetime.date.today(),
-            addressee_content = addressee.content
+            addressee = addressee
             )
 
     messages.success(request, 'Data successfully saved')
@@ -1000,7 +1000,7 @@ def non_member_save(request):
             ref_number = ref_number,
             ref_no_date = ref_no_date,
             date=datetime.date.today(),
-            addressee_content = addressee.content
+            addressee = addressee
             )
 
     messages.success(request, 'Data successfully saved')
@@ -1021,9 +1021,27 @@ def non_member_save(request):
 class NDCArchive(View):
 
     def get(self, request):
-        ndcs = NoDueCertificate.objects.all().order_by('report_number')
+        ndc_report_numbers = NoDueCertificate.objects.all().order_by('report_number').values('report_number').distinct()
+        report_nos = [rn['report_number'] for rn in ndc_report_numbers]
+        dates = [NoDueCertificate.objects.filter(report_number=rn)[0].date for rn in report_nos]
+        ndcs = zip(report_nos, dates)
         return render(request, 'portal/ndc_archive.html', {'ndcs':ndcs})
 
     def post(self, request):
         data = request.POST
-        return JsonResponse(data)
+        try:
+            report_number = data['ndc_rn']
+            ndcs = NoDueCertificate.objects.filter(report_number=report_number)
+            date = ndcs[0].date
+            addressee = ndcs[0].addressee
+
+            context = {
+                'ndcs': ndcs,
+                'date': date,
+                'report_number': report_number,
+                'addressee': addressee
+            }
+            return render(request, 'portal/ndc_archive_print.html', context)
+        except (KeyError, AttributeError) as e:
+            print(e)
+            return JsonResponse({'message': 'Invalid Request'})
