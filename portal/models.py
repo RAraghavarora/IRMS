@@ -3520,3 +3520,29 @@ class NoDueAddressee(models.Model):
 
     class Meta:
         db_table = 'no_due_addressee'
+
+class FineReport(models.Model):
+    report_number = models.IntegerField(blank=True)
+    patron_name = models.CharField(max_length=50)
+    ic_number = models.CharField(max_length=50)
+    division = models.CharField(max_length=50)
+    mem_number = models.CharField(max_length=20)
+    ref_number = models.IntegerField(blank=True)
+    date = models.DateField(auto_now=True)
+    addressee = models.ForeignKey('NoDueAddressee', related_name='fine_reports', on_delete=models.SET_NULL, null=True)
+    full_ref = models.CharField(max_length = 40, null=True)
+    fine = models.IntegerField()
+
+    def __str__(self):
+        return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
+
+    def save(self, *args, **kwargs):
+        if not self.full_ref:
+            self.full_ref = "IGCAR/SIRD/LISS/CM/{year}/FINE/{addressee}/{report_number}".format(
+                year=self.date.year,
+                addressee=self.addressee.ref_number,
+                report_number=self.report_number)
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'fine_report'
