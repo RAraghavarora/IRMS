@@ -1060,3 +1060,179 @@ class NDCArchive(View):
         except (KeyError, AttributeError) as e:
             print(e)
             return JsonResponse({'message': 'Invalid Request'})
+
+class FineReports(View):
+
+    def get(self, request):
+        # Get all the addressee
+        addressee_list = NoDueAddressee.objects.all()
+
+        # Available Units:
+        units = [
+            'BHAVINI',
+            'IGCAR',
+            'PRP',
+            'BARCF',
+            'GSO',
+            'MAPS',
+            'AERB',
+            'DPS'
+        ]
+        return render(request, 'portal/fine_input.html', {"addressee_list": addressee_list})
+
+    def post(self, request):
+        try:
+            data = request.POST
+            from_date = data['from_date']
+            to_date = data['to_date']
+            addressee_id = data['addressee']
+            try:
+                addressee = NoDueAddressee.objects.get(id=addressee_id)
+            except AttributeError:
+                return JsonResponse({"Message": "Invalid Addressee"})
+
+            # Raw SQL query to get details of all fines
+            sql_query = '''
+                SELECT emp AS 'Employee Name',icno AS 'IC No',Unit,pat AS 'Membership No.', sum(tfa) AS 'Total Fine Amount' FROM (SELECT
+                   case WHEN substr(b.sort1,1,2)='BH' THEN 'BHAVINI'
+                        when substr(b.sort1,1,1)='I' then 'IGCAR'
+                        when substr(b.sort1,1,1)='P' then 'PRP'
+                        when substr(b.sort1,1,1)='B' then 'BARCF'
+
+                        when substr(b.sort1,1,1)='G' then 'GSO'
+                        when substr(b.sort1,1,1)='M' then 'MAPS'
+                        when substr(b.sort1,1,1)='A' then 'AERB'
+                        when substr(b.sort1,1,1)='D' then 'DPS'
+                   else 'Unit Not Known'
+                   end
+
+                   as 'Unit', b.cardnumber as 'pat',TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'icno', b.surname as 'emp',  Sum(round(a.amountoutstanding,2)) as 'tfa'
+                FROM accountlines a
+                  LEFT JOIN borrowers b ON ( b.borrowernumber = a.borrowernumber )
+                  LEFT JOIN items i ON ( a.itemnumber = i.itemnumber )
+                  LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
+                  LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
+                WHERE
+                    a.amountoutstanding > 0 and ni.returndate is not null and DATE(ni.returndate) BETWEEN \'{from_date}\' AND \'{to_date}\'
+                GROUP BY a.description
+                ORDER BY Unit, b.surname,  ni.timestamp DESC) as res1 group by Unit, pat, icno,emp order by Unit, icno, emp
+                '''.format(from_date=from_date, to_date=to_date)
+            print(sql_query)
+
+            db = MySQLdb.connect(
+                host="localhost",
+                user="root",
+                passwd="igcarlibrary",
+                db="library"
+            )
+            cur = db.cursor()
+
+            #Execute the SQL query
+            cur.execute(sql_query)
+
+            count = 0 # To count the total number of rows
+            values = []
+
+            ref_number_list = []
+            names = []
+            ic_nos = []
+            divisions = []
+            mem_nos = []
+            fines = []
+
+            for row in cur.fetchall():
+                count+=1
+                values.append(row)
+
+                names.append(row[0])
+                ic_nos.append(row[1])
+                divisions.append(row[2])
+                mem_nos.append(row[3])
+                fines.append(float(row[4]))
+
+            # Get the report number by incrementing the maximum report number by 1
+            reports = FineReport.objects.all()
+            max_report_no = reports.aggregate(Max('report_number'))['report_number__max']
+            if max_report_no:
+                report_number = max_report_no + 1
+            else:
+                report_number = 1
+
+            # Get the maximum reference number
+            max_ref_no = FineReport.objects.aggregate(Max('ref_number'))['ref_number__max']
+            # We are starting reference numbers from 3001, as this software will be used after 3000 reports
+            if not max_ref_no or max_ref_no < 3001:
+                refer_number = 3001
+            else:
+                refer_number = max_ref_no + 1
+
+
+            for ref_no in range(0,count):
+                ref_number_list.append(refer_number)
+                refer_number += 1
+
+            valid_data = zip(values, ref_number_list)
+
+            context = {
+                'report_number': report_number,
+                'valid_data': valid_data,
+                'addressee': addressee,
+                'date': datetime.date.today()
+            }
+            print(fines)
+            data = {
+                'names': names,
+                'ic_nos':ic_nos,
+                'divisions':divisions,
+                'mem_nos':mem_nos,
+                'fines':fines,
+                'addressee_id': addressee.id
+            }
+            request.session['saved'] = data
+
+            return render(request, 'portal/fine_report.html', context=context)
+
+        except KeyError:
+            return JsonResponse({'message': "Invalid Request"})
+        except MySQLdb.Error as e:
+            print(e)
+            return JsonResponse({"message": "Error in sql query"})
+
+def fine_report_save(request):
+    # Extract data saved in django sessions
+    data = request.session['saved']
+    names = data['names']
+    ic_nos = data['ic_nos']
+    divisions = data['divisions']
+    mem_nos = data['mem_nos']
+    fines = data['fines']
+    addressee_id = data['addressee_id']
+    addressee = NoDueAddressee.objects.get(id=addressee_id)
+    print(fines)
+
+    # Get the report number by incrementing the maximum report number by 1
+    reports = FineReport.objects.all()
+    max_report_no = reports.aggregate(Max('report_number'))['report_number__max']
+    if max_report_no:
+        report_number = max_report_no + 1
+    else:
+        report_number = 1
+
+    # Get the maximum reference number
+    max_ref_no = FineReport.objects.aggregate(Max('ref_number'))['ref_number__max']
+    # We are starting reference numbers from 3001, as this software will be used after 3000 reports
+    if not max_ref_no or max_ref_no < 3001:
+        refer_number = 3001
+    else:
+        refer_number = max_ref_no + 1
+
+    ref_number_list = []
+    for ref_no in range(0,len(names)):
+        ref_number_list.append(refer_number)
+        refer_number += 1
+
+    valid_data = zip(names, ic_nos, divisions, mem_nos, fines, ref_number_list )
+    context = {'valid_data': valid_data, 'date': datetime.date.today(), 'report_number': report_number,  "addressee": addressee}
+
+    messages.success(request, 'Successfully saved')
+    return render(request, 'portal/fine_report_final.html', context=context)

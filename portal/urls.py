@@ -24,6 +24,8 @@ urlpatterns = [
     path('report_types/no_due_non_members',views.NoDueNonMembers.as_view(), name='no_due_non_members'),
     path('non_member_save/',views.non_member_save, name='non_member_save'),
     path('report_types/ndc_archive',views.NDCArchive.as_view(), name='ndc_archive'),
+    path('report_types/fine_report',views.FineReports.as_view(), name='fine_report'),
+    path('report_types/fine_report_save/',views.fine_report_save, name='fine_report_save'),
 
 
     path('abc/',views.abc, name='abc'),
