@@ -696,7 +696,8 @@ class NoDue(View):
             context = {
                 'invalid': invalid
             }
-            return render(request, 'portal/no_due_input.html', context)
+            messages.error(request,'Following IC number(s) is/are invalid: {}'.format(invalid))
+            return redirect('portal:no_due')
 
         if not valid_patrons:
             return JsonResponse({'message': 'Please Enter IC numbers'})
@@ -711,8 +712,16 @@ class NoDue(View):
             issues = Issues.objects.filter(borrowernumber = patron)
 
             accountlines = Accountlines.objects.filter(borrowernumber = patron)
-            fine = accountlines.aggregate(Sum('amountoutstanding'))['amountoutstanding__sum']
+            balance = accountlines.aggregate(Sum('amountoutstanding'))['amountoutstanding__sum']
 
+            # Checking if user's balance is positive or negative
+            if balance:
+                if balance < 0:
+                    fine = 0
+                else:
+                    fine = balance
+            else:
+                fine = 0
 
             if issues or fine:
                 valid_patrons.remove(patron)
@@ -775,12 +784,17 @@ class NoDue(View):
 
         valid_data = zip( valid_patrons, ref_number_list, ref_no_date_list )
 
+        if not valid_patrons:
+            display = False
+        else:
+            display = True
         # Get the chosen addressee
         try:
             addressee_id = request.POST['addressee']
             addressee = NoDueAddressee.objects.get(id=addressee_id)
         except KeyError:
-            return JsonResponse({'message':'Addressee not chosen'})
+            messages.error(request, 'Please choose Addressee')
+            return redirect('portal:no_due')
         except AttributeError:
             return JsonResponse({'message':'Invalid Addressee'})
 
@@ -791,7 +805,8 @@ class NoDue(View):
             'report_number': report_number,
             'date':date,
             'failed_data':failed_data,
-            'addressee':addressee
+            'addressee':addressee,
+            'display': display
         }
 
         print(context)
@@ -987,10 +1002,10 @@ def non_member_save(request):
         names,
         ic_numbers,
         divs,
-        ref_numbers,
+        ref_number_list,
         ref_no_date_list
     )
-    for name, ic_number, division, ref_number_list, ref_no_date in data_zip:
+    for name, ic_number, division, ref_number, ref_no_date in data_zip:
         ndc = NoDueCertificate.objects.create(
             report_number = report_number,
             patron_name = name,
@@ -1009,7 +1024,7 @@ def non_member_save(request):
         names,
         ic_numbers,
         divs,
-        ref_numbers,
+        ref_number_list,
         ref_no_date_list
     )
     date = datetime.date.today()
@@ -1021,10 +1036,10 @@ def non_member_save(request):
 class NDCArchive(View):
 
     def get(self, request):
-        ndc_report_numbers = NoDueCertificate.objects.all().order_by('report_number').values('report_number').distinct()
-        report_nos = [rn['report_number'] for rn in ndc_report_numbers]
-        dates = [NoDueCertificate.objects.filter(report_number=rn)[0].date for rn in report_nos]
-        ndcs = zip(report_nos, dates)
+        ndc_report_numbers = NoDueCertificate.objects.all().order_by('report_number').values('full_ref').distinct()
+        full_ref_list = [rn['full_ref'] for rn in ndc_report_numbers]
+        dates = [NoDueCertificate.objects.filter(full_ref=ref)[0].date for ref in full_ref_list]
+        ndcs = zip(full_ref_list, dates)
         return render(request, 'portal/ndc_archive.html', {'ndcs':ndcs})
 
     def post(self, request):

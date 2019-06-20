@@ -81,7 +81,7 @@
 
     <div id="main">
       <div class="id">
-
+        {% if display %}
         <div class="heading-container" style="text-align:center; padding-top:10px">
           <div class="heading" style="display: inline-block">
             <span> Indira Gandhi Centre for Atomic Research </br>  <label style="padding-top:5px;"> Scientific Information Resource Division </label>
@@ -94,7 +94,7 @@
         </div>
 
         <span style="position: absolute; top:120px; left:10px">
-          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{report_number}}
+          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{addressee.ref_number}}/{{report_number}}
         </span>
 
 
@@ -117,7 +117,6 @@
               <thead>
                 <tr>
                   <th> Sl. No. </th>
-                  <th> Report Number </th>
                   <th> Name of the Employee [Dr./Shri./Smt./Kum.]</th>
                   <th> IC No. </th>
                   <th> Div./Group </th>
@@ -130,7 +129,6 @@
                 {% for data_value in valid_data %}
                 <tr>
                   <td> {{forloop.counter}} </td>
-                  <td> {{report_number }} </td>
                   <td> {{data_value.0.full_name}}</td>
                   <td> {{data_value.0.sort1}}</td>
                   <td> {{data_value.0.address}}
@@ -159,6 +157,7 @@
 
         <div style="position:relative; text-align: left">
           <span style="position: relative;">
+            Through <br>
             (S. Rajeswari)
             <br>
             (Head, SIRD)
@@ -168,7 +167,7 @@
 
         <div  style="position:relative;  text-align: left;">
           <label>
-            <pre style="font-style: italic">{{addressee.content}}</pre>
+            <pre style="font-style: normal">{{addressee.content}}</pre>
           </label>
         </div>
 
@@ -181,6 +180,10 @@
       <a role="button" class="btn btn-success" href="{% url 'portal:no_due_save' %}">Save information</a><br><br>
       <a role="button" class="btn btn-info" href="{% url 'portal:report_types' %}">Reports Home</a>
     </div>
+    {% else %}
+      No Due Certificate could not be generated
+      <a role="button" class="btn btn-info" href="{% url 'portal:report_types' %}">Reports Home</a>
+    {% endif %}
   </div>
 
     <script src="{% static 'jquery/js/jquery.min.js' %}"></script>

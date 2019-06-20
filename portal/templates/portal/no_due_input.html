@@ -39,7 +39,7 @@
         <div class="table-responsive">
 
           <label for="addressee">Choose the addressee </label>
-          <select name="addressee">
+          <select name="addressee" required>
             <option disabled="disabled" selected="true"> Choose the addressee </option>
             {% for addressee in addressee_list %}
             <option value={{addressee.id}}>{{addressee.code}}</option>

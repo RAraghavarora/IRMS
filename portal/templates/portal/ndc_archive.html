@@ -27,14 +27,6 @@
 
   <h3 style="text-align:center;"> Types of reports: </h3>
 
-  <div style="padding-top:50px; text-align:right;">
-      <form action="{% url 'portal:book_detail' %}" method="post">
-          {% csrf_token %}
-          {{ form.as_table }}
-          <input type="submit" />
-      </form>
-  </div>
-
   <a href="{% url 'portal:profile' %}" class="btn btn-info" role="button">Go To Profile Page</a>
 
       <div class="row clearfix" style="padding-top:20px">
@@ -48,7 +40,7 @@
                           <form method='POST' action='{% url 'portal:ndc_archive' %}'>
                             {% csrf_token %}
                             <tr>
-                              <td style="text-align:center;" width="30%"> Report - {{ndc.0}} </td>
+                              <td style="text-align:center;" width="30%"> {{ndc.0}} </td>
                               <td style="text-align:center;" width="35%"> {{ndc.1}} </td>
                               <td><input type="submit" value="Click here"> </td>
                               <input type="hidden" value={{ndc.0}} name="ndc_rn"> </input>

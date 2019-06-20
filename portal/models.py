@@ -36,11 +36,11 @@ class Accountlines(models.Model):
     accountno = models.SmallIntegerField()
     itemnumber = models.ForeignKey('Items', models.DO_NOTHING, db_column='itemnumber', blank=True, null=True)
     date = models.DateField(blank=True, null=True)
-    amount = models.DecimalField(max_digits=28, decimal_places=6, blank=True, null=True)
+    amount = models.DecimalField(max_digits=28, decimal_places=6, blank=True, null=True) # Amount of the fine/invoice
     description = models.TextField(blank=True, null=True)
     accounttype = models.CharField(max_length=5, blank=True, null=True)
     payment_type = models.CharField(max_length=80, blank=True, null=True)
-    amountoutstanding = models.DecimalField(max_digits=28, decimal_places=6, blank=True, null=True)
+    amountoutstanding = models.DecimalField(max_digits=28, decimal_places=6, blank=True, null=True) # Remaining amount after receiving / sending the payment
     lastincrement = models.DecimalField(max_digits=28, decimal_places=6, blank=True, null=True)
     timestamp = models.DateTimeField()
     note = models.TextField(blank=True, null=True)
@@ -3491,10 +3491,19 @@ class NoDueCertificate(models.Model):
     ref_no_date = models.CharField(max_length=50)
     date = models.DateField(auto_now=True)
     addressee = models.ForeignKey('NoDueAddressee', related_name='ndcs', on_delete=models.SET_NULL, null=True)
+    full_ref = models.CharField(max_length = 40, null=True)
 
 
     def __str__(self):
         return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
+
+    def save(self, *args, **kwargs):
+        if not self.full_ref:
+            self.full_ref = "IGCAR/SIRD/LISS/CM/{year}/NDC/{addressee}/{report_number}".format(
+                year=self.date.year,
+                addressee=self.addressee.ref_number,
+                report_number=self.report_number)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'no_due_certificate'

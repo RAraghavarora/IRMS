@@ -94,7 +94,7 @@
         </div>
 
         <span style="position: absolute; top:120px; left:10px">
-          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{report_number}}
+          Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/NDC/{{addressee.ref_number}}/{{report_number}}
         </span>
 
 
@@ -117,7 +117,6 @@
               <thead>
                 <tr>
                   <th> Sl. No. </th>
-                  <th> Report Number </th>
                   <th> Name of the Employee [Dr./Shri./Smt./Kum.]</th>
                   <th> IC No. </th>
                   <th> Div./Group </th>
@@ -130,7 +129,6 @@
                 {% for data_value in valid_data %}
                 <tr>
                   <td> {{forloop.counter}} </td>
-                  <td> {{report_number }} </td>
                   <td> {{data_value.0}} </td>
                   <td> {{data_value.1}} </td>
                   <td> {{data_value.2}}</td>
@@ -159,6 +157,7 @@
 
         <div style="position:relative; text-align: left">
           <span style="position: relative;">
+            Through <br>
             (S. Rajeswari)
             <br>
             (Head, SIRD)

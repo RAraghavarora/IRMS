@@ -123,7 +123,6 @@
               <thead>
                 <tr>
                   <th> Sl. No. </th>
-                  <th> Report Number </th>
                   <th> Name of the Employee [Dr./Shri./Smt./Kum.]</th>
                   <th> IC No. </th>
                   <th> Div./Group </th>
@@ -136,7 +135,6 @@
                 {% for ndc in ndcs %}
                 <tr>
                   <td style="border-collapse: collapse;"> {{forloop.counter}} </td>
-                  <td style="border-collapse: collapse;"> {{ndc.report_number}} </td>
                   <td style="border-collapse: collapse;"> {{ndc.patron_name}} </td>
                   <td style="border-collapse: collapse;"> {{ndc.ic_number}}</td>
                   <td style="border-collapse: collapse;"> {{ndc.division}} </td>
@@ -166,6 +164,7 @@
 
         <div style="position:relative; text-align: left">
           <span style="position: relative; font-weight:bold ">
+            Through <br>
             (S. Rajeswari)
             <br>
             (Head, SIRD)
