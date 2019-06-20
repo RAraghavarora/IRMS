@@ -1,0 +1,62 @@
+{% extends 'portal/base.html' %}
+{% block content %}
+
+<div class="card">
+    <div class="header" >
+        <h1>IRMS | IGCAR </h1>
+        <div class="error" style="background-color:#DB3B21">
+            {% if invalid %}
+            <h5 style="color:white"> The following IC numbers entered are invalid </h5>
+            <ul>
+              {% for invalid_no in invalid %}
+              <li style="color:#FDFDFD"> {{invalid_no}} </li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+            {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+              </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+      </br></br>
+        <h2>
+            Generate No Due Certificate
+        </h2>
+    </div>
+
+
+    <form  method="POST" action="{% url 'portal:fine_report' %}">
+    {% csrf_token %}
+    <div class="body">
+        <div class="table-responsive">
+
+          <label for="addressee">Choose the addressee </label>
+          <select name="addressee" required>
+            <option disabled="disabled" selected="true"> Choose the addressee </option>
+            {% for addressee in addressee_list %}
+            <option value={{addressee.id}}>{{addressee.code}}</option>
+            {% endfor %}
+          </select>
+
+          <br><br><br><br>
+          <label> Choose the return dates: </label><br>
+          <input type="date" name="from_date">From date </input><br>
+          <input type="date" name="to_date">To date </input></br>
+
+            <div style="text-align:center">
+              <button type="submit" class="btn btn-primary m-t-15 waves-effect">Submit</button>
+            </div>
+    </form>
+
+
+    </div>
+</div>
+
+{% endblock %}
