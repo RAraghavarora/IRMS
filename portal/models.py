@@ -3490,8 +3490,8 @@ class PatronInfo(models.Model):
     division = models.CharField(max_length=50)
     mem_number = models.CharField(max_length=20) # Stored in the borrowers table by the name of cardnumber
     ref_no_date = models.CharField(max_length=50, null=True) # Ref No. / Date
-    ndc_ref_number = models.IntegerField(blank=True, unique=True) # A unique number given by us for NDCs
-    fine_ref_number = models.IntegerField(blank=True, unique=True) # A unique number given by us for FineReport
+    ndc_ref_number = models.IntegerField(blank=True, unique=True, null=True) # A unique number given by us for NDCs
+    fine_ref_number = models.IntegerField(blank=True, unique=True, null=True) # A unique number given by us for FineReport
     fine = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     class Meta:
