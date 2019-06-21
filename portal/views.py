@@ -837,10 +837,10 @@ def no_due_save(request):
         patrons_ids = data['patrons']
         ref_no_date_list = data['ref_no_date_list']
         addressee_id = data['addressee']
-        addressee = NoDueAddressee.objects.get(id=addressee_id)
+        addressee = Addressee.objects.get(id=addressee_id)
 
         # Get the report number by incrementing the maximum report number by 1
-        max_report_no = PatronInfo.objects.aggregate(Max('ndc_report_number'))['ndc_report_number__max']
+        max_report_no = NoDueCertificate.objects.aggregate(Max('report_number'))['report_number__max']
         if max_report_no:
             report_number = max_report_no + 1
         else:
@@ -849,7 +849,7 @@ def no_due_save(request):
         ref_number_list = []
 
         # Get the maximum reference number
-        max_ref_no = NoDueCertificate.objects.aggregate(Max('ref_number'))['ref_number__max']
+        max_ref_no = PatronInfo.objects.aggregate(Max('ndc_ref_number'))['ndc_ref_number__max']
         # We are starting reference numbers from 3001, as this software will be used after 3000 reports
         if not max_ref_no or max_ref_no < 3001:
             refer_number = 3001
@@ -870,9 +870,10 @@ def no_due_save(request):
             ic_number = borrower.sort1,
             division = borrower.address,
             mem_number = borrower.cardnumber,
-            ref_number = ref_number,
+            ndc_ref_number = ref_number,
             ref_no_date = ref_no_date
             )
+        patrons.append(pi)
 
     ndc = NoDueCertificate.objects.create(
     report_number = report_number,
@@ -905,7 +906,7 @@ class NoDueNonMembers(View):
 
     def get(self, request):
         # Get all the addressee
-        addressee_list = NoDueAddressee.objects.all()
+        addressee_list = Addressee.objects.all()
         context = {'addressee_list':addressee_list}
         return render(request, 'portal/non_members_input.html', context=context)
 
@@ -917,7 +918,7 @@ class NoDueNonMembers(View):
             div_list = data.getlist('div')
             ref_no_date_list = data.getlist('ref_no_date')
             addressee_id = request.POST['addressee']
-            addressee = NoDueAddressee.objects.get(id=addressee_id)
+            addressee = Addressee.objects.get(id=addressee_id)
 
             # Get the report number by incrementing the maximum report number by 1
             max_report_no = NoDueCertificate.objects.aggregate(Max('report_number'))['report_number__max']
@@ -929,7 +930,7 @@ class NoDueNonMembers(View):
             ref_number_list = []
 
             # Get the maximum reference number
-            max_ref_no = NoDueCertificate.objects.aggregate(Max('ref_number'))['ref_number__max']
+            max_ref_no = PatronInfo.objects.aggregate(Max('ndc_ref_number'))['ndc_ref_number__max']
             # We are starting reference numbers from 3001, as this software will be used after 3000 reports
             if not max_ref_no or max_ref_no < 3001:
                 refer_number = 3001
@@ -980,7 +981,7 @@ def non_member_save(request):
         divs = data['divs']
         ref_no_date_list = data['ref_no_date_list']
         addressee_id = data['addressee']
-        addressee = NoDueAddressee.objects.get(id=addressee_id)
+        addressee = Addressee.objects.get(id=addressee_id)
 
         # Get the report number by incrementing the maximum report number by 1
         max_report_no = NoDueCertificate.objects.aggregate(Max('report_number'))['report_number__max']
@@ -992,7 +993,7 @@ def non_member_save(request):
         ref_number_list = []
 
         # Get the maximum reference number
-        max_ref_no = NoDueCertificate.objects.aggregate(Max('ref_number'))['ref_number__max']
+        max_ref_no = PatronInfo.objects.aggregate(Max('ndc_ref_number'))['ndc_ref_number__max']
         # We are starting reference numbers from 3001, as this software will be used after 3000 reports
         if not max_ref_no or max_ref_no < 3001:
             refer_number = 3001
@@ -1012,18 +1013,27 @@ def non_member_save(request):
         ref_number_list,
         ref_no_date_list
     )
+    patrons = []
     for name, ic_number, division, ref_number, ref_no_date in data_zip:
-        ndc = NoDueCertificate.objects.create(
-            report_number = report_number,
-            patron_name = name,
+        pi = PatronInfo.objects.create(
+            name = name,
             ic_number = ic_number,
             division = division,
             mem_number = 'Non. Mem.',
-            ref_number = ref_number,
+            ndc_ref_number = ref_number,
             ref_no_date = ref_no_date,
-            date=datetime.date.today(),
-            addressee = addressee
-            )
+        )
+        patrons.append(pi)
+
+    ndc = NoDueCertificate.objects.create(
+        report_number = report_number,
+        date=datetime.date.today(),
+        addressee = addressee
+        )
+
+    for patron in patrons:
+        ndc.patrons.add(patron)
+        ndc.save()
 
     messages.success(request, 'Data successfully saved')
 
@@ -1052,13 +1062,16 @@ class NDCArchive(View):
     def post(self, request):
         data = request.POST
         try:
-            report_number = data['ndc_rn']
-            ndcs = NoDueCertificate.objects.filter(report_number=report_number)
-            date = ndcs[0].date
-            addressee = ndcs[0].addressee
+            full_ref = data['ndc_rn']
+            ndc = NoDueCertificate.objects.get(full_ref=full_ref)
+            date = ndc.date
+            addressee = ndc.addressee
+            patrons = ndc.patrons.all()
+            report_number = ndc.report_number
 
             context = {
-                'ndcs': ndcs,
+                'ndc': ndc,
+                'patrons': patrons,
                 'date': date,
                 'report_number': report_number,
                 'addressee': addressee
@@ -1072,7 +1085,7 @@ class FineReports(View):
 
     def get(self, request):
         # Get all the addressee
-        addressee_list = NoDueAddressee.objects.all()
+        addressee_list = Addressee.objects.all()
 
         # Available Units:
         units = [
@@ -1094,7 +1107,7 @@ class FineReports(View):
             to_date = data['to_date']
             addressee_id = data['addressee']
             try:
-                addressee = NoDueAddressee.objects.get(id=addressee_id)
+                addressee = Addressee.objects.get(id=addressee_id)
             except AttributeError:
                 return JsonResponse({"Message": "Invalid Addressee"})
 
@@ -1166,7 +1179,7 @@ class FineReports(View):
                 report_number = 1
 
             # Get the maximum reference number
-            max_ref_no = FineReport.objects.aggregate(Max('ref_number'))['ref_number__max']
+            max_ref_no = PatronInfo.objects.aggregate(Max('fine_ref_number'))['fine_ref_number__max']
             # We are starting reference numbers from 3001, as this software will be used after 3000 reports
             if not max_ref_no or max_ref_no < 3001:
                 refer_number = 3001
@@ -1214,7 +1227,7 @@ def fine_report_save(request):
     mem_nos = data['mem_nos']
     fines = data['fines']
     addressee_id = data['addressee_id']
-    addressee = NoDueAddressee.objects.get(id=addressee_id)
+    addressee = Addressee.objects.get(id=addressee_id)
     print(fines)
 
     # Get the report number by incrementing the maximum report number by 1
@@ -1226,7 +1239,7 @@ def fine_report_save(request):
         report_number = 1
 
     # Get the maximum reference number
-    max_ref_no = FineReport.objects.aggregate(Max('ref_number'))['ref_number__max']
+    max_ref_no = PatronInfo.objects.aggregate(Max('fine_ref_number'))['fine_ref_number__max']
     # We are starting reference numbers from 3001, as this software will be used after 3000 reports
     if not max_ref_no or max_ref_no < 3001:
         refer_number = 3001

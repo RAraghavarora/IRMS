@@ -132,15 +132,15 @@
                 </tr>
               </thead>
               <tbody>
-                {% for ndc in ndcs %}
+                {% for patron in patrons %}
                 <tr>
                   <td style="border-collapse: collapse;"> {{forloop.counter}} </td>
-                  <td style="border-collapse: collapse;"> {{ndc.patron_name}} </td>
-                  <td style="border-collapse: collapse;"> {{ndc.ic_number}}</td>
-                  <td style="border-collapse: collapse;"> {{ndc.division}} </td>
-                  <td style="border-collapse: collapse;"> {{ndc.mem_number}} </td>
-                  <td style="border-collapse: collapse;"> {{ndc.ref_number}}</td>
-                  <td style="border-collapse: collapse;"> {{ndc.ref_no_date}}</td>
+                  <td style="border-collapse: collapse;"> {{patron.name}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.ic_number}}</td>
+                  <td style="border-collapse: collapse;"> {{patron.division}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.mem_number}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.ndc_ref_number}}</td>
+                  <td style="border-collapse: collapse;"> {{patron.ref_no_date}}</td>
                 </tr>
                 {% endfor %}
             </thead>
