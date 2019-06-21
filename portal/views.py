@@ -662,7 +662,7 @@ class NoDue(View):
         Input the IC number of members.
         '''
         # Get all the addressee
-        addressee_list = NoDueAddressee.objects.all()
+        addressee_list = Addressee.objects.all()
         context = {'addressee_list':addressee_list}
         print(context)
         return render(request, 'portal/no_due_input.html', context=context)
@@ -765,7 +765,7 @@ class NoDue(View):
         ref_number_list = []
 
         # Get the maximum reference number
-        max_ref_no = NoDueCertificate.objects.aggregate(Max('ref_number'))['ref_number__max']
+        max_ref_no = PatronInfo.objects.aggregate(Max('ndc_ref_number'))['ndc_ref_number__max']
         # We are starting reference numbers from 3001, as this software will be used after 3000 reports
         if not max_ref_no or max_ref_no < 3001:
             refer_number = 3001
@@ -791,7 +791,7 @@ class NoDue(View):
         # Get the chosen addressee
         try:
             addressee_id = request.POST['addressee']
-            addressee = NoDueAddressee.objects.get(id=addressee_id)
+            addressee = Addressee.objects.get(id=addressee_id)
         except KeyError:
             messages.error(request, 'Please choose Addressee')
             return redirect('portal:no_due')
@@ -840,7 +840,7 @@ def no_due_save(request):
         addressee = NoDueAddressee.objects.get(id=addressee_id)
 
         # Get the report number by incrementing the maximum report number by 1
-        max_report_no = NoDueCertificate.objects.aggregate(Max('report_number'))['report_number__max']
+        max_report_no = PatronInfo.objects.aggregate(Max('ndc_report_number'))['ndc_report_number__max']
         if max_report_no:
             report_number = max_report_no + 1
         else:
@@ -862,19 +862,26 @@ def no_due_save(request):
     except KeyError:
         return JsonResponse({'message': "Invalid Request"})
 
+    patrons=[]
     for patron_id, ref_number, ref_no_date in zip(patrons_ids, ref_number_list, ref_no_date_list):
         borrower = Borrowers.objects.get(borrowernumber=patron_id)
-        ndc = NoDueCertificate.objects.create(
-            report_number = report_number,
-            patron_name = borrower.full_name,
+        pi = PatronInfo.objects.create(
+            name = borrower.full_name,
             ic_number = borrower.sort1,
             division = borrower.address,
             mem_number = borrower.cardnumber,
             ref_number = ref_number,
-            ref_no_date = ref_no_date,
-            date=datetime.date.today(),
-            addressee = addressee
+            ref_no_date = ref_no_date
             )
+
+    ndc = NoDueCertificate.objects.create(
+    report_number = report_number,
+    date=datetime.date.today(),
+    addressee = addressee
+    )
+    for patron in patrons:
+        ndc.patrons.add(patron)
+        ndc.save()
 
     messages.success(request, 'Data successfully saved')
 
@@ -1069,16 +1076,16 @@ class FineReports(View):
 
         # Available Units:
         units = [
-            'BHAVINI',
-            'IGCAR',
-            'PRP',
-            'BARCF',
-            'GSO',
-            'MAPS',
             'AERB',
+            'BARCF',
+            'BHAVINI',
             'DPS'
+            'GSO',
+            'IGCAR',
+            'MAPS',
+            'PRP',
         ]
-        return render(request, 'portal/fine_input.html', {"addressee_list": addressee_list})
+        return render(request, 'portal/fine_input.html', {"addressee_list": addressee_list, 'units':units})
 
     def post(self, request):
         try:
@@ -1113,9 +1120,9 @@ class FineReports(View):
                   LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
                   LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
                 WHERE
-                    a.amountoutstanding > 0 and ni.returndate is not null and DATE(ni.returndate) BETWEEN \'{from_date}\' AND \'{to_date}\'
-                GROUP BY a.description
-                ORDER BY Unit, b.surname,  ni.timestamp DESC) as res1 group by Unit, pat, icno,emp order by Unit, icno, emp
+                    a.amountoutstanding > 0 and ni.returndate is not null
+                GROUP BY a.description, b.cardnumber, b.sort1, b.surname, ni.timestamp
+                ORDER BY Unit, b.surname,  ni.timestamp DESC) as res1 group by Unit, pat, icno, emp order by Unit, icno, emp
                 '''.format(from_date=from_date, to_date=to_date)
             print(sql_query)
 

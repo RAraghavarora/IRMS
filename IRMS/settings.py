@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'portal',
     'django_mysql',
-    'ckeditor'
 ]
 
 MIDDLEWARE = [

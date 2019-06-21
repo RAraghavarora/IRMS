@@ -3480,22 +3480,35 @@ class Zebraqueue(models.Model):
 
 
 # Total 215 models
+class PatronInfo(models.Model):
+    '''
+    Model storing information of Patrons for reports like NoDueCertificates, and FineReports.
+    Not pointing to the original Borrowers table, as that is provided by Koha and any change in koha database would affect the tables created by us.
+    '''
+    name = models.CharField(max_length=75)
+    ic_number = models.CharField(max_length=25) # Stored in the borrowers table by the name of sort1
+    division = models.CharField(max_length=50)
+    mem_number = models.CharField(max_length=20) # Stored in the borrowers table by the name of cardnumber
+    ref_no_date = models.CharField(max_length=50, null=True) # Ref No. / Date
+    ndc_ref_number = models.IntegerField(blank=True, unique=True) # A unique number given by us for NDCs
+    fine_ref_number = models.IntegerField(blank=True, unique=True) # A unique number given by us for FineReport
+    fine = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    class Meta:
+        db_table = 'patron_info'
+
+    def __str__(self):
+        return self.name
 
 class NoDueCertificate(models.Model):
     report_number = models.IntegerField(blank=True)
-    patron_name = models.CharField(max_length=50)
-    ic_number = models.CharField(max_length=50)
-    division = models.CharField(max_length=50)
-    mem_number = models.CharField(max_length=20)
-    ref_number = models.IntegerField(blank=True)
-    ref_no_date = models.CharField(max_length=50)
     date = models.DateField(auto_now=True)
-    addressee = models.ForeignKey('NoDueAddressee', related_name='ndcs', on_delete=models.SET_NULL, null=True)
+    addressee = models.ForeignKey('Addressee', related_name='ndcs', on_delete=models.SET_NULL, null=True)
     full_ref = models.CharField(max_length = 40, null=True)
-
+    patrons = models.ManyToManyField('PatronInfo', related_name='ndcs')
 
     def __str__(self):
-        return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
+        return self.full_ref
 
     def save(self, *args, **kwargs):
         if not self.full_ref:
@@ -3508,9 +3521,8 @@ class NoDueCertificate(models.Model):
     class Meta:
         db_table = 'no_due_certificate'
 
-from ckeditor.fields import RichTextField
 
-class NoDueAddressee(models.Model):
+class Addressee(models.Model):
     code = models.CharField(max_length=15)
     content = models.TextField(max_length=200)
     ref_number = models.IntegerField()
@@ -3519,22 +3531,17 @@ class NoDueAddressee(models.Model):
         return self.code
 
     class Meta:
-        db_table = 'no_due_addressee'
+        db_table = 'addressee'
 
 class FineReport(models.Model):
     report_number = models.IntegerField(blank=True)
-    patron_name = models.CharField(max_length=50)
-    ic_number = models.CharField(max_length=50)
-    division = models.CharField(max_length=50)
-    mem_number = models.CharField(max_length=20)
-    ref_number = models.IntegerField(blank=True)
+    patrons = models.ManyToManyField('PatronInfo', related_name='fine_reports')
     date = models.DateField(auto_now=True)
-    addressee = models.ForeignKey('NoDueAddressee', related_name='fine_reports', on_delete=models.SET_NULL, null=True)
+    addressee = models.ForeignKey('Addressee', related_name='fine_reports', on_delete=models.SET_NULL, null=True)
     full_ref = models.CharField(max_length = 40, null=True)
-    fine = models.IntegerField()
 
     def __str__(self):
-        return self.patron_name + " - " + str(self.report_number) + " - " + str(self.ref_number)
+        return self.full_ref
 
     def save(self, *args, **kwargs):
         if not self.full_ref:

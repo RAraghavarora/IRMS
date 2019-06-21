@@ -44,11 +44,19 @@
             <option value={{addressee.id}}>{{addressee.code}}</option>
             {% endfor %}
           </select>
+          <br><br><br>
+          <label for="unit">Choose the Unit </label>
+          <select name="unit" required>
+            <option disabled="disabled" selected="true"> Choose the unit </option>
+            {% for unit in units %}
+            <option value={{unit}}>{{unit}}</option>
+            {% endfor %}
+          </select>
 
           <br><br><br><br>
           <label> Choose the return dates: </label><br>
-          <input type="date" name="from_date">From date </input><br>
-          <input type="date" name="to_date">To date </input></br>
+          <input type="date" name="from_date" required>From date </input><br>
+          <input type="date" name="to_date" required>To date </input></br>
 
             <div style="text-align:center">
               <button type="submit" class="btn btn-primary m-t-15 waves-effect">Submit</button>
