@@ -192,6 +192,8 @@ class Aqbooksellers(models.Model):
         managed = False
         db_table = 'aqbooksellers'
 
+    def __str__(self):
+        return self.name
 
 class Aqbudgetborrowers(models.Model):
     budget = models.OneToOneField('Aqbudgets', models.DO_NOTHING, primary_key=True)
@@ -3533,12 +3535,16 @@ class Addressee(models.Model):
     class Meta:
         db_table = 'addressee'
 
-class FineReport(models.Model):
+class FineReportSummary(models.Model):
     report_number = models.IntegerField(blank=True)
     patrons = models.ManyToManyField('PatronInfo', related_name='fine_reports')
     date = models.DateField(auto_now=True)
     addressee = models.ForeignKey('Addressee', related_name='fine_reports', on_delete=models.SET_NULL, null=True)
     full_ref = models.CharField(max_length = 40, null=True)
+    unit = models.CharField(max_length=20)
+    to_date = models.DateField()
+    from_date = models.DateField()
+
 
     def __str__(self):
         return self.full_ref
@@ -3552,4 +3558,4 @@ class FineReport(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        db_table = 'fine_report'
+        db_table = 'fine_report_summary'
