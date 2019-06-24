@@ -22,9 +22,9 @@
 
   <body>
       <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
-      <h3 style="text-align: center"> {{report_type}} {% if from_date %} From: {{from_date}} To {{to_date}} {% endif %}</h3>
+      <h3 style="text-align: center"> {{report_type}} [{% if from_date %} From: {{from_date}} To {{to_date}}] {% endif %}</h3>
+      {% if unit %}<h4 style="text-align: center"> Unit: {{unit}}</h4> {% endif %}
       <h3> <small> Total number of entries: {{count}} <br> {% if total %} Out of total: {{total}} {% endif %}</small> </h3>
-
       <a href="{% url 'portal:report_types' %}" class="btn btn-info" role="button">Go To Reports Home</a>
 
       <div class="row clearfix">

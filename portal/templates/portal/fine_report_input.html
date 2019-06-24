@@ -32,19 +32,11 @@
     </div>
 
 
-    <form  method="POST" action="{% url 'portal:fine_report_summary' %}">
+    <form  method="POST" action="{% url 'portal:fine_report' %}">
     {% csrf_token %}
     <div class="body">
         <div class="table-responsive">
 
-          <label for="addressee">Choose the addressee </label>
-          <select name="addressee" required>
-            <option disabled="disabled" selected="true"> Choose the addressee </option>
-            {% for addressee in addressee_list %}
-            <option value={{addressee.id}}>{{addressee.code}}</option>
-            {% endfor %}
-          </select>
-          <br><br><br>
           <label for="unit">Choose the Unit </label>
           <select name="unit" required>
             <option disabled="disabled" selected="true"> Choose the unit </option>

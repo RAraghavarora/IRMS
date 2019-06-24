@@ -25,15 +25,7 @@
 
 <br>
 
-  <h3 style="text-align:center;"> Types of reports: </h3>
-
-  <div style="padding-top:50px; text-align:right;">
-      <form action="{% url 'portal:book_detail' %}" method="post">
-          {% csrf_token %}
-          {{ form.as_table }}
-          <input type="submit" />
-      </form>
-  </div>
+  <h3 style="text-align:center;"> Fine Reports: </h3>
 
   <a href="{% url 'portal:profile' %}" class="btn btn-info" role="button">Go To Profile Page</a>
 
@@ -44,53 +36,17 @@
                     <table class="table table-bordered js-exportable" id='example'>
 
                         <tbody>
-                          <tr>
-                            <td width="50%"> Checked out books </td>
-                            <td><a href="{% url 'portal:checked_out' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Date-wise Circulation Report  </td>
-                            <td><a href="{% url 'portal:circulation' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Inactive Patrons </td>
-                            <td> <a href="{% url 'portal:inactive_patrons' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Inactive Books </td>
-                            <td> <a href="{% url 'portal:inactive_books' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Waiting Holds -<p style='color:red;'> Work In Progress </p> </td>
-                            <td> <a href="{% url 'portal:holds_waiting' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Fines </td>
-                            <td> <a href="{% url 'portal:fine_report' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Generate No Due Certificate - For Members </td>
-                            <td> <a href="{% url 'portal:no_due' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                            <td rowspan="2"><br> <a style="height: 40px;"role="button" class="btn btn-danger" href="{% url 'portal:ndc_archive' %}" >NDC Archive</a><br><br>
-                          </tr>
-
-                          <tr>
-                            <td> Generate No Due Certificate - For Non-Members </td>
-                            <td> <a href="{% url 'portal:no_due_non_members' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Generate Fine Summary Report </td>
-                            <td> <a href="{% url 'portal:fine_report_summary' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                            <td><a role="button" class="btn btn-danger" href="{% url 'portal:fine_summary_archive' %}" >Fine Summary Archive</a>
-                          </tr>
-
+                          {% for report in fine_summary_reports %}
+                          <form method='POST' action='{% url 'portal:fine_summary_archive' %}'>
+                            {% csrf_token %}
+                            <tr>
+                              <td style="text-align:center;" width="30%"> {{report.full_ref}} </td>
+                              <td style="text-align:center;" width="35%"> {{report.date}} </td>
+                              <td><input type="submit" value="Click here"> </td>
+                              <input type="hidden" value={{report.id}} name="report_id"> </input>
+                            </tr>
+                          </form>
+                          {% endfor %}
                         </tbody>
 
                     </table>

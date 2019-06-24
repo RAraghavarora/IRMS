@@ -3,7 +3,7 @@
   <head>
     {% load static %}
     <meta charset="utf-8">
-    <title>Fine Report</title>
+    <title>No Due Certificate</title>
     <link href="{% static 'bootstrap/css/bootstrap.css' %}" rel="stylesheet">
 
     <style>
@@ -13,6 +13,11 @@
         box-sizing: border-box;
         font-family: "Azo Sans Regular";
         font-size: 5mm;
+      }
+      pre {
+        font-family: "Azo Sans Regular";
+        font-size: 5mm;
+        font-weight: bold;
       }
       html {
         min-width: 100vw;
@@ -57,9 +62,8 @@
 
       table, th, td {
         border: 1px solid black;
-        border-collapse: collapse;
         text-align: center;
-        width: 100%
+        border-collapse: separate;
       }
     </style>
 
@@ -80,7 +84,8 @@
     {% endif %}
 
     <div id="main">
-      <div class="id">
+      <div class="id" id="printable">
+
         <div class="heading-container" style="text-align:center; padding-top:10px">
           <div class="heading" style="display: inline-block">
             <span> Indira Gandhi Centre for Atomic Research </br>  <label style="padding-top:5px;"> Scientific Information Resource Division </label>
@@ -92,22 +97,24 @@
         </br>
         </div>
 
+<br>
+        <h3 style="display: none"> {{message}}</h3>
         <div>
           <span style="float: left">
-            Ref: IGCAR/SIRD/LISS/CM/{{date.year}}/FINE/{{addressee.ref_number}}/{{report_number}}
-            <br> Unit: {{unit}}
+            Ref: IGCAR/SIRD/LISS/CM/{{report.date.year}}/FINE/{{report.addressee.ref_number}}/{{report.report_number}}
+            <br> Unit: {{report.unit}}
           </span>
+
           <span style="float: right">
-            Date: {{date}}
+            Date: {{report.date}}
           </span>
         </div>
-        <br><br>
-
+<br><br>
         <div style="text-align:center">
-          <label> <b> <u> Fine Report - Summary </b> </u> </label>
-          <p> (From : {{from_date}} To: {{to_date}}) </p>
+          <label> <b> <u> FINE REPORT - SUMMARY </b> </u> </label>
         </div>
         <br>
+
 
         <div style="padding: 15px">
           <p> This is to inform you that the following member(s) have fines in the library, as mentioned below. This is issued with reference to your communication cited below. </p>
@@ -124,16 +131,18 @@
                   <th> Lib. Mem. No. </th>
                   <th> Total Fine Amount </th>
                   <th> Lib. Ref. No. </th>
-                <th>
+                </tr>
               </thead>
               <tbody>
-                {% for data_value in valid_data %}
+                {% for patron in patrons %}
                 <tr>
-                  <td> {{forloop.counter}} </td>
-                  {% for data2 in data_value.0 %}
-                  <td> {{data2}} </td>
-                  {% endfor %}
-                  <td> {{data_value.1}}</td>
+                  <td style="border-collapse: collapse;"> {{forloop.counter}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.name}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.ic_number}}</td>
+                  <td style="border-collapse: collapse;"> {{patron.division}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.mem_number}} </td>
+                  <td style="border-collapse: collapse;"> {{patron.fine}}</td>
+                  <td style="border-collapse: collapse;"> {{patron.fine_ref_number}}</td>
                 </tr>
                 {% endfor %}
             </thead>
@@ -146,16 +155,17 @@
         </br>
         </br>
 
-        <div style="position: relative; text-align:right;">
+
+        <div style="font-weight: bold; position: relative; text-align:right;">
           <span >
-            (V. Rajendran)
+            (Officer Incharge)
             <br>
             (Head, LISS / SIRD)
           </span>
         </div>
 
         <div style="position:relative; text-align: left">
-          <span style="position: relative;">
+          <span style="position: relative; font-weight:bold ">
             Through <br>
             (S. Rajeswari)
             <br>
@@ -163,29 +173,56 @@
           </span>
         </div>
 
-
         <div  style="position:relative;  text-align: left;">
           <label>
-            <pre style="font-style: normal">{{addressee.content}}</pre>
+            <pre style='font-family: "Azo Sans Regular"; font-weight:bold'>{{report.addressee.content}}</pre>
           </label>
         </div>
-
 
       </div>
 
     </div>
 
+
     <div class="button" style="padding-top:400px">
-      <a role="button" class="btn btn-success" href="{% url 'portal:fine_report_summary_save' %}">Save Information</a> <br><br>
+      <a role="button" class="btn btn-success" onclick="printDiv('printable')">Print</a><br><br>
       <a role="button" class="btn btn-info" href="{% url 'portal:report_types' %}">Reports Home</a>
     </div>
 
-  </div>
 
-    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
-    <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
 
+      <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+      <script src="{% static 'bootstrap/js/bootstrap.js' %}"></script>
+
+    </div>
 
 
   </body>
+  <script type="text/javascript">
+
+  function printDiv(divName) {
+    var htmlToPrint = '' +
+        '<style type="text/css">' +
+        'table {' +
+        'border: 1px solid black;' +
+        'border-collapse: collapse;' +
+        '}' +
+        'td {' +
+        'border: 1px solid black;' +
+        'border-color: black;' +
+        '}' +
+        'th {' +
+        'border: 1px solid black;' +
+        'border-color: black;' +
+        '}' +
+        '</style>';
+    console.log(divName)
+    var printContents = htmlToPrint + document.getElementById(divName).innerHTML;
+
+    w=window.open();
+    w.document.write(printContents);
+    w.print();
+    w.close();
+  }
+  </script>
 </html>

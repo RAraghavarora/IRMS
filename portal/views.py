@@ -25,7 +25,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from portal.models import *
-from portal.forms import ReservesForm
+from portal.forms import ReservesForm, AqBasketForm
 from portal.apps import *
 
 
@@ -583,18 +583,41 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
         items_list = []
         if self.q:
             print("**************88")
-            items = items.annotate(full_name = Concat(
-                'biblionumber__title',
-                Value(' '),
-                XMLExtractValue('biblionumber__bibliometadata__metadata','//datafield[@tag="245"]/subfield[@code="b"]') )
-                )
-            items_list = items.filter(full_name__istartswith=self.q)
-
-        if items_list:
-            print('Nah')
+            sql_query ='''
+                SELECT items.itemnumber, concat( b.title, ' ', ExtractValue((
+                    SELECT metadata
+                    FROM biblio_metadata b2
+                    WHERE b.biblionumber = b2.biblionumber),
+                      '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title FROM biblio b, items
+                    WHERE b.biblionumber=items.biblionumber AND
+                    title REGEXP '^{start}'
+                  '''.format(start=self.q)
+            items_list = items.raw(sql_query)
             return items_list
+            # items = items.annotate(full_name = Concat(
+            #     'biblionumber__title',
+            #     Value(' '),
+            #     XMLExtractValue('biblionumber__bibliometadata__metadata','//datafield[@tag="245"]/subfield[@code="b"]') )
+            #     )
+            # items_list = items.filter(full_name__istartswith=self.q)
+        return items
+
+class VendorAutocomplete(autocomplete.Select2QuerySetView):
+    #Using Django-autocomplete library
+
+    def get_queryset(self):
+        vendors = Aqbooksellers.objects.all().order_by('name')
+
+        vendors_list = []
+        if self.q:
+            vendors_list = vendors.filter(name__icontains=self.q)
+
+        if vendors_list:
+            print(vendors_list)
+            return vendors_list
         else:
-            return items
+            print('nah')
+            return vendors
 
 def abc(request):
     return None
@@ -1053,7 +1076,7 @@ def non_member_save(request):
 class NDCArchive(View):
 
     def get(self, request):
-        ndc_report_numbers = NoDueCertificate.objects.all().order_by('report_number').values('full_ref').distinct()
+        ndc_report_numbers = NoDueCertificate.objects.all().order_by('-report_number').values('full_ref').distinct()
         full_ref_list = [rn['full_ref'] for rn in ndc_report_numbers]
         dates = [NoDueCertificate.objects.filter(full_ref=ref)[0].date for ref in full_ref_list]
         ndcs = zip(full_ref_list, dates)
@@ -1081,7 +1104,7 @@ class NDCArchive(View):
             print(e)
             return JsonResponse({'message': 'Invalid Request'})
 
-class FineReports(View):
+class FineReportsSummary(View):
 
     def get(self, request):
         # Get all the addressee
@@ -1106,6 +1129,11 @@ class FineReports(View):
             from_date = data['from_date']
             to_date = data['to_date']
             addressee_id = data['addressee']
+            unit = data['unit']
+            if unit == "BHAVINI":
+                unit_substr = 'BH'
+            else:
+                unit_substr = unit[0]
             try:
                 addressee = Addressee.objects.get(id=addressee_id)
             except AttributeError:
@@ -1113,30 +1141,19 @@ class FineReports(View):
 
             # Raw SQL query to get details of all fines
             sql_query = '''
-                SELECT emp AS 'Employee Name',icno AS 'IC No',Unit,pat AS 'Membership No.', sum(tfa) AS 'Total Fine Amount' FROM (SELECT
-                   case WHEN substr(b.sort1,1,2)='BH' THEN 'BHAVINI'
-                        when substr(b.sort1,1,1)='I' then 'IGCAR'
-                        when substr(b.sort1,1,1)='P' then 'PRP'
-                        when substr(b.sort1,1,1)='B' then 'BARCF'
-
-                        when substr(b.sort1,1,1)='G' then 'GSO'
-                        when substr(b.sort1,1,1)='M' then 'MAPS'
-                        when substr(b.sort1,1,1)='A' then 'AERB'
-                        when substr(b.sort1,1,1)='D' then 'DPS'
-                   else 'Unit Not Known'
-                   end
-
-                   as 'Unit', b.cardnumber as 'pat',TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'icno', b.surname as 'emp',  Sum(round(a.amountoutstanding,2)) as 'tfa'
+                SELECT emp AS 'Employee Name',icno AS 'IC No', divi AS 'Division', pat AS 'Membership No.', sum(tfa) AS 'Total Fine Amount' FROM (SELECT
+                   b.cardnumber as 'pat',b.address as 'divi', TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'icno', b.surname as 'emp',  Sum(round(a.amountoutstanding,2)) as 'tfa'
                 FROM accountlines a
                   LEFT JOIN borrowers b ON ( b.borrowernumber = a.borrowernumber )
                   LEFT JOIN items i ON ( a.itemnumber = i.itemnumber )
                   LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
                   LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
                 WHERE
-                    a.amountoutstanding > 0 and ni.returndate is not null
-                GROUP BY a.description, b.cardnumber, b.sort1, b.surname, ni.timestamp
-                ORDER BY Unit, b.surname,  ni.timestamp DESC) as res1 group by Unit, pat, icno, emp order by Unit, icno, emp
-                '''.format(from_date=from_date, to_date=to_date)
+                    a.amountoutstanding > 0 and ni.returndate is not null AND Date(ni.returndate) BETWEEN \'{from_date}\' AND \'{to_date}\'
+                    AND b.sort1 LIKE \'{unit}%\'
+                GROUP BY a.description, b.cardnumber, b.sort1, b.surname, ni.timestamp, b.address
+                ORDER BY b.surname,  ni.timestamp DESC) as res1 group by pat, icno, emp, divi order by icno, emp
+                '''.format(from_date=from_date, to_date=to_date, unit=unit_substr)
             print(sql_query)
 
             db = MySQLdb.connect(
@@ -1171,7 +1188,9 @@ class FineReports(View):
                 fines.append(float(row[4]))
 
             # Get the report number by incrementing the maximum report number by 1
-            reports = FineReport.objects.all()
+            f = FineReportSummary()
+            print(dir(f))
+            reports = FineReportSummary.objects.all()
             max_report_no = reports.aggregate(Max('report_number'))['report_number__max']
             if max_report_no:
                 report_number = max_report_no + 1
@@ -1197,7 +1216,10 @@ class FineReports(View):
                 'report_number': report_number,
                 'valid_data': valid_data,
                 'addressee': addressee,
-                'date': datetime.date.today()
+                'date': datetime.date.today(),
+                'unit': unit,
+                'from_date': datetime.datetime.strptime(from_date, "%Y-%M-%d").strftime("%d-%m-%Y"),
+                'to_date': datetime.datetime.strptime(to_date, "%Y-%M-%d").strftime("%d-%m-%Y")
             }
             print(fines)
             data = {
@@ -1206,7 +1228,10 @@ class FineReports(View):
                 'divisions':divisions,
                 'mem_nos':mem_nos,
                 'fines':fines,
-                'addressee_id': addressee.id
+                'addressee_id': addressee.id,
+                'unit': unit,
+                'from_date': from_date,
+                'to_date': to_date
             }
             request.session['saved'] = data
 
@@ -1218,7 +1243,7 @@ class FineReports(View):
             print(e)
             return JsonResponse({"message": "Error in sql query"})
 
-def fine_report_save(request):
+def fine_report_summary_save(request):
     # Extract data saved in django sessions
     data = request.session['saved']
     names = data['names']
@@ -1228,10 +1253,11 @@ def fine_report_save(request):
     fines = data['fines']
     addressee_id = data['addressee_id']
     addressee = Addressee.objects.get(id=addressee_id)
-    print(fines)
-
+    unit = data['unit']
+    from_date = data['from_date']
+    to_date = data['to_date']
     # Get the report number by incrementing the maximum report number by 1
-    reports = FineReport.objects.all()
+    reports = FineReportSummary.objects.all()
     max_report_no = reports.aggregate(Max('report_number'))['report_number__max']
     if max_report_no:
         report_number = max_report_no + 1
@@ -1251,8 +1277,239 @@ def fine_report_save(request):
         ref_number_list.append(refer_number)
         refer_number += 1
 
+    data_zip = zip(names, ic_nos, divisions, mem_nos, fines, ref_number_list)
+
+    patrons = []
+    for name, ic_no, division, mem_no, fine, ref_number in data_zip:
+        pi = PatronInfo.objects.create(
+            name = name,
+            ic_number = ic_no,
+            division = division,
+            mem_number = mem_no,
+            fine_ref_number = ref_number,
+            fine=fine
+        )
+        patrons.append(pi)
+
+    fr = FineReportSummary.objects.create(
+        report_number = report_number,
+        date = datetime.date.today(),
+        addressee = addressee,
+        unit = unit,
+        from_date = from_date,
+        to_date = to_date
+    )
+    fr.patrons.add(*patrons)
+
     valid_data = zip(names, ic_nos, divisions, mem_nos, fines, ref_number_list )
-    context = {'valid_data': valid_data, 'date': datetime.date.today(), 'report_number': report_number,  "addressee": addressee}
+    context = {
+        'valid_data': valid_data,
+        'date': datetime.date.today(),
+        'report_number': report_number,
+        "addressee": addressee,
+        'unit': unit,
+        'from_date': from_date,
+        'to_date': to_date
+        }
 
     messages.success(request, 'Successfully saved')
     return render(request, 'portal/fine_report_final.html', context=context)
+
+class FineSummaryArchive(View):
+    def get(self, request):
+        fine_summary_reports = FineReportSummary.objects.all().order_by('-report_number')
+        return render(request, 'portal/fine_archive_input.html', context = {'fine_summary_reports': fine_summary_reports})
+
+    def post(self, request):
+        try:
+            data = request.POST
+            report_id = data['report_id']
+            fine_summary = FineReportSummary.objects.get(id=report_id)
+            patrons = fine_summary.patrons.all()
+            context = {'patrons': patrons, 'report': fine_summary}
+            return render(request, 'portal/fine_archive_print.html', context=context)
+
+        except KeyError:
+            return JsonResponse({"message": "invalid report chosen"})
+
+class FineReport(View):
+
+    def get(self, request):
+        # Get all the addressee
+        addressee_list = Addressee.objects.all()
+
+        # Available Units:
+        units = [
+            'AERB',
+            'BARCF',
+            'BHAVINI',
+            'DPS'
+            'GSO',
+            'IGCAR',
+            'MAPS',
+            'PRP',
+        ]
+        return render(request, 'portal/fine_report_input.html', {"addressee_list": addressee_list, 'units':units})
+
+    def post(self, request):
+        try:
+            data = request.POST
+            from_date = data['from_date']
+            to_date = data['to_date']
+            unit = data['unit']
+            if unit == 'BHAVINI':
+                unit_substr = "BH"
+            else:
+                unit_substr = unit[0]
+            sql_query='''
+                SELECT
+                    b.cardnumber as 'Membership No.',TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'IC No.',
+                    TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ),
+                    concat( bib.title, ' ', ExtractValue((
+                            SELECT metadata
+                            FROM biblio_metadata b2
+                            WHERE bib.biblionumber = b2.biblionumber),
+                              '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
+                    i.barcode as 'Accession Number',
+                    ni.issuedate as 'Issue Date', ni.date_due as 'Due Date',
+                    ni.returndate AS 'Return Date' , round(a.amountoutstanding,2) as 'Fine Amount'
+                FROM accountlines a
+                  LEFT JOIN borrowers b ON ( b.borrowernumber = a.borrowernumber )
+                  LEFT JOIN items i ON ( a.itemnumber = i.itemnumber )
+                  LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
+                  LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
+                WHERE
+                    a.amountoutstanding > 0 and ni.returndate is not null and DATE (ni.returndate)  BETWEEN \'{from_date}\' AND \'{to_date}\'
+                    AND b.sort1 LIKE \'{unit}%\'
+                GROUP BY a.description, b.cardnumber, b.sort1, b.surname,b.firstname, bib.title, i.barcode, ni.issuedate, ni.date_due, ni.returndate, ni.date_due, a.amountoutstanding, ni.timestamp, bib.biblionumber
+                ORDER BY b.sort1, b.surname, ni.timestamp DESC
+            '''.format(from_date=from_date, to_date=to_date, unit=unit_substr)
+            print(unit)
+            print(sql_query)
+
+            db = MySQLdb.connect(
+                host="localhost",
+                user="root",
+                passwd="igcarlibrary",
+                db="library"
+            )
+            cur = db.cursor()
+
+            cur.execute(sql_query)
+            count=0 #To count the total number of entries
+
+            values = []
+            for row in cur.fetchall():
+                count+=1
+                row=list(row)
+                # Replace Null with empty string for Return date
+                if not row[-2]:
+                    row[-2] = " "
+                values.append(row)
+
+            headings = [
+                'Membership Number',
+                'IC Number',
+                'Employee Name',
+                'Book Title',
+                'Accession Number(Barcode)',
+                'Issue Date',
+                'Due Date',
+                'Return Date',
+                'Fine Amount'
+            ]
+
+            context = {
+                'count':count,
+                'values':values,
+                'headings':headings,
+                'report_type':'Patron Report - Fines',
+                'from_date': from_date,
+                'to_date': to_date,
+                'unit': unit
+            }
+
+            return render(request, 'portal/circulation_reoprt.html', context=context)
+
+        except MySQLdb.Error as e:
+            print(e)
+            return JsonResponse({'message':"Unable to fetch data"})
+
+
+class RequestedAcquisition(View):
+
+    def get(self, request):
+        form = AqBasketForm()
+        return render(request, 'portal/requested_acquisition.html', {'form':form})
+
+    def post(self, request):
+        try:
+            data = request.POST
+            from_date = data['from_date']
+            to_date = data['to_date']
+            booksellerid = data['booksellerid']
+            vendor = Aqbooksellers.objects.get(id=booksellerid)
+            sql_query = '''
+                        SELECT concat( biblio.title, ' ', ExtractValue((
+                                    SELECT metadata
+                                    FROM biblio_metadata b2
+                                    WHERE biblio.biblionumber = b2.biblionumber),
+                                      '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
+                                biblio.author,
+                                biblioitems.publishercode,
+                                o.orderstatus,
+                                ba.authorisedby,
+                                format(o.listprice,2) AS 'list price',
+                                format(o.unitprice,2) AS 'actual price',
+                                ba.basketno
+                        FROM aqorders o
+                        LEFT JOIN aqbasket ba USING (basketno)
+                        LEFT JOIN aqbooksellers v ON (v.id = ba.booksellerid)
+                        LEFT JOIN biblio USING (biblionumber)
+                        LEFT JOIN biblioitems ON (biblioitems.biblionumber = biblio.biblionumber)
+                        WHERE o.entrydate BETWEEN \'{from_date}\' AND \'{to_date}\'
+                        AND v.id = {vendor_id}
+                        ORDER BY o.entrydate, o.orderstatus
+                        '''.format(from_date=from_date, to_date=to_date, vendor_id=vendor.id)
+
+            db = MySQLdb.connect(
+                host="localhost",
+                user="root",
+                passwd="igcarlibrary",
+                db="library"
+            )
+            cur = db.cursor()
+
+            cur.execute(sql_query)
+            count=0 #To count the total number of entries
+
+            values = []
+            for row in cur.fetchall():
+                count+=1
+                row=list(row)
+                values.append(row)
+
+            headings = [
+                'Book Title',
+                'Author',
+                'Publisher',
+                'Order Status',
+                'Suggested By',
+                'List Price',
+                'Actual Price',
+                'Basket ID'
+            ]
+
+            context = {
+                'count':count,
+                'values':values,
+                'headings':headings,
+                'report_type':'Acquisition Report - DateWise requested items',
+                'from_date': from_date,
+                'to_date': to_date,
+            }
+
+            return render(request, 'portal/circulation_reoprt.html', context=context)
+
+        except KeyError:
+            return JsonResponse({'message': 'Invalid Request'})
