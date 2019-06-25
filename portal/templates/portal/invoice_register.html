@@ -20,21 +20,22 @@
 
       </br></br>
         <h2>
-            Generate Date-wise Acquisition Report
+            Generate Invoice Registers
+            <small> Vendor: {{vendor.name}} </small>
         </h2>
     </div>
 
 
-    <form  method="POST" action="{% url 'portal:requested_acquisition' %}">
+    <form  method="POST" action="{% url 'portal:invoice_register' %}">
     {% csrf_token %}
     <div class="body">
       {{ form.as_table }}
       <br><br>
         <div class="table-responsive">
 
-          <label> Choose the dates: </label><br>
+          <label> Choose the Billing Dates: </label><br>
           <input type="date" name="from_date" required>From date </input><br>
-          <input type="date" name="to_date" required>To date </input></br>
+          <input type="date" name="to_date" `req`uired>To date </input></br>
 
 
             <div style="text-align:center">

@@ -16,6 +16,9 @@ urlpatterns = [
     path('search/', views.Search.as_view(), name='search'),
     path('report_types/',views.report_types, name='report_types'),
     path('report_types/inactive_books/',views.inactive_books, name='inactive_books'),
+    path('report_types/suggested_books/',views.suggested_books, name='suggested_books'),
+    path('report_types/overdue_orders/',views.overdue_orders, name='overdue_orders'),
+    path('report_types/invoice_register/',views.InvoiceRegister.as_view(), name='invoice_register'),
 
     path('report_types/holds_waiting/',views.holds_waiting, name='holds_waiting'),
     path('search_query/',views.BookAutocomplete.as_view(), name='search_query'),
@@ -31,7 +34,7 @@ urlpatterns = [
     path('report_types/fine_report_summary_save/',views.fine_report_summary_save, name='fine_report_summary_save'),
     path('report_types/fine_summary_archive',views.FineSummaryArchive.as_view(), name='fine_summary_archive'),
     path('report_types/fine_report/',views.FineReport.as_view(), name='fine_report'),
-    path('report_types/requested_acquisition',views.RequestedAcquisition.as_view(), name='requested_acquisition'),
+    path('report_types/vendor_orders',views.VendorOrders.as_view(), name='vendor_orders'),
 
 
     path('abc/',views.abc, name='abc'),

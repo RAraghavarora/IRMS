@@ -75,6 +75,21 @@
                           </tr>
 
                           <tr>
+                            <td> Vendor-wise Orders </td>
+                            <td> <a href="{% url 'portal:vendor_orders' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+                          <tr>
+                            <td> Suggested Books </td>
+                            <td> <a href="{% url 'portal:suggested_books' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+                          <tr>
+                            <td> Overdue Orders </td>
+                            <td> <a href="{% url 'portal:overdue_orders' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+
+                          <tr>
                             <td> Generate No Due Certificate - For Members </td>
                             <td> <a href="{% url 'portal:no_due' %}" class="btn btn-link" role="button">Click Here</a> </td>
                             <td rowspan="2"><br> <a style="height: 40px;"role="button" class="btn btn-danger" href="{% url 'portal:ndc_archive' %}" >NDC Archive</a><br><br>

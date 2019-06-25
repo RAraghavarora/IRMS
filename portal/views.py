@@ -621,13 +621,9 @@ class VendorAutocomplete(autocomplete.Select2QuerySetView):
         vendors_list = []
         if self.q:
             vendors_list = vendors.filter(name__icontains=self.q)
-
-        if vendors_list:
-            print(vendors_list)
             return vendors_list
-        else:
-            print('nah')
-            return vendors
+
+        return vendors
 
 def abc(request):
     return None
@@ -1446,11 +1442,11 @@ class FineReport(View):
             return JsonResponse({'message':"Unable to fetch data"})
 
 
-class RequestedAcquisition(View):
+class VendorOrders(View):
 
     def get(self, request):
         form = AqBasketForm()
-        return render(request, 'portal/requested_acquisition.html', {'form':form})
+        return render(request, 'portal/invoice_register.html', {'form':form})
 
     def post(self, request):
         try:
@@ -1468,15 +1464,17 @@ class RequestedAcquisition(View):
                                 biblio.author,
                                 biblioitems.publishercode,
                                 o.orderstatus,
-                                ba.authorisedby,
+                                borrowers.surname,
                                 format(o.listprice,2) AS 'list price',
                                 format(o.unitprice,2) AS 'actual price',
-                                ba.basketno
+                                ba.basketno,
+                                o.entrydate
                         FROM aqorders o
                         LEFT JOIN aqbasket ba USING (basketno)
                         LEFT JOIN aqbooksellers v ON (v.id = ba.booksellerid)
                         LEFT JOIN biblio USING (biblionumber)
                         LEFT JOIN biblioitems ON (biblioitems.biblionumber = biblio.biblionumber)
+                        LEFT JOIN borrowers ON (borrowers.borrowernumber = ba.authorisedby)
                         WHERE o.entrydate BETWEEN \'{from_date}\' AND \'{to_date}\'
                         AND v.id = {vendor_id}
                         ORDER BY o.entrydate, o.orderstatus
@@ -1504,7 +1502,7 @@ class RequestedAcquisition(View):
                 'Author',
                 'Publisher',
                 'Order Status',
-                'Suggested By',
+                'Authorised By',
                 'List Price',
                 'Actual Price',
                 'Basket ID'
@@ -1517,9 +1515,274 @@ class RequestedAcquisition(View):
                 'report_type':'Acquisition Report - DateWise requested items',
                 'from_date': from_date,
                 'to_date': to_date,
+                'vendor': vendor
             }
 
             return render(request, 'portal/circulation_reoprt.html', context=context)
 
         except KeyError:
             return JsonResponse({'message': 'Invalid Request'})
+
+def overdue_orders(request):
+
+    sql_query = '''
+                SELECT concat( biblio.title, ' ', ExtractValue((
+                            SELECT metadata
+                            FROM biblio_metadata b2
+                            WHERE biblio.biblionumber = b2.biblionumber),
+                              '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
+                        biblio.author,
+                        biblioitems.publishercode,
+                        o.orderstatus,
+                        borrowers.surname,
+                        format(o.listprice,2) AS 'list price',
+                        format(o.unitprice,2) AS 'actual price',
+                        ba.basketno
+                FROM aqorders o
+                LEFT JOIN aqbasket ba USING (basketno)
+                LEFT JOIN aqbooksellers v ON (v.id = ba.booksellerid)
+                LEFT JOIN biblio USING (biblionumber)
+                LEFT JOIN biblioitems ON (biblioitems.biblionumber = biblio.biblionumber)
+                LEFT JOIN borrowers ON (borrowers.borrowernumber = ba.authorisedby)
+                WHERE o.entrydate BETWEEN \'{from_date}\' AND \'{to_date}\'
+                AND v.id = {vendor_id}
+                ORDER BY o.entrydate, o.orderstatus
+                '''.format(from_date=from_date, to_date=to_date, vendor_id=vendor.id)
+
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+    cur.execute(sql_query)
+    count=0 #To count the total number of entries
+
+    values = []
+    for row in cur.fetchall():
+        count+=1
+        row=list(row)
+        values.append(row)
+
+    headings = [
+        'Book Title',
+        'Author',
+        'Publisher',
+        'Order Status',
+        'Suggested By',
+        'List Price',
+        'Actual Price',
+        'Basket ID'
+    ]
+
+    context = {
+        'count':count,
+        'values':values,
+        'headings':headings,
+        'report_type':'Acquisition Report - DateWise requested items',
+        'from_date': from_date,
+        'to_date': to_date,
+        'vendor': vendor
+    }
+
+    return render(request, 'portal/circulation_reoprt.html', context=context)
+
+
+
+def suggested_books(request):
+    sql_query = '''
+                SELECT r.title 'Title',r.author 'Author', r.publishercode 'Publisher',r.copyrightdate 'Year', r.STATUS,
+                TRIM(CONCAT(COALESCE(bb.firstname,""), " ",  COALESCE(bb.surname,"") ) ) 'Suggested By',
+                r.quantity 'Quantity', r.price
+
+                FROM suggestions r
+
+                LEFT JOIN aqbudgets b ON r.budgetid=b.budget_id
+                LEFT JOIN borrowers bb ON r.suggestedby=bb.borrowernumber
+
+                WHERE STATUS LIKE 'ASKED'
+                '''
+    headings = [
+        'Title',
+        'Author',
+        'Publisher',
+        'Year',
+        'Status',
+        'Suggested By',
+        'Quantity',
+        'Price',
+    ]
+
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+    cur.execute(sql_query)
+    count=0 #To count the total number of entries
+
+    values = []
+    for row in cur.fetchall():
+        values.append(row)
+
+    context = {
+        'headings': headings,
+        'values': values,
+        'report_type': 'Acquisition Report: Titles For Placing Orders'
+    }
+
+    return render(request, 'portal/circulation_reoprt.html', context)
+
+def overdue_orders(request):
+    sql_query = '''
+                SELECT
+                    concat( biblio.title, ' ', ExtractValue((
+                        SELECT metadata
+                        FROM biblio_metadata b2
+                        WHERE biblio.biblionumber = b2.biblionumber),
+                          '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
+                    biblio.author,
+                    biblioitems.publishercode,
+                    biblioitems.publicationyear,
+                    aqorders.entrydate,
+                    aqbooksellers.name,
+                    aqorders.orderstatus
+                FROM
+                    aqorders
+                    LEFT JOIN biblio
+                        USING (biblionumber)
+                    LEFT JOIN biblioitems
+                        USING (biblionumber)
+                    LEFT JOIN aqinvoices
+                        USING (invoiceid)
+                    LEFT JOIN aqbudgets
+                        USING (budget_id)
+                    LEFT JOIN aqbasket
+                        USING (basketno)
+                    LEFT JOIN aqbooksellers
+                        ON (aqbooksellers.id = aqbasket.booksellerid)
+                WHERE
+                    aqorders.ordernumber IS NOT NULL
+                    AND aqorders.datecancellationprinted IS NULL
+                    AND aqorders.datereceived IS NULL
+                    AND aqorders.entrydate < DATE(DATE_SUB(NOW(), INTERVAL 30 DAY))
+                ORDER BY aqbudgets.budget_name ASC
+                '''
+    headings = [
+        'Book Name',
+        'Author',
+        'Publisher',
+        'Year',
+        'Entry Date',
+        'Vendor',
+        'Status',
+    ]
+
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+    cur.execute(sql_query)
+    count=0 #To count the total number of entries
+
+    values = []
+    for row in cur.fetchall():
+        count+=1
+        values.append(row)
+
+    context = {
+        'count': count,
+        'headings': headings,
+        'values': values,
+        'report_type': 'Acquisition Report: Overdue Notice (Order Placed > 30 days)'
+    }
+
+    return render(request, 'portal/circulation_reoprt.html', context)
+
+class InvoiceRegister(View):
+    def get(self, request):
+        form = AqBasketForm()
+        return render(request, 'portal/invoice_register.html', {'form':form})
+
+
+    def post(self, request):
+        try:
+            data = request.POST
+            booksellerid = data['booksellerid']
+            from_date = data['from_date']
+            to_date = data['to_date']
+            vendor = Aqbooksellers.objects.get(id=booksellerid)
+
+            sql_query = '''
+                SELECT
+                    aqbasket.basketname 'Basket Name',
+                    invoice.invoicenumber 'Invoice Number',invoice.billingdate 'Bill Date',
+                    round( SUM(
+                        case
+                            when invoice.shipmentcost IS NOT NULL THEN aqorders.unitprice_tax_included*aqorders.quantityreceived+invoice.shipmentcost
+                            ELSE aqorders.unitprice_tax_included*aqorders.quantityreceived
+                        END
+                    ),2) 'Total Invoice Amount',
+                    SUM(aqorders.discount) 'Discount', round(SUM(aqorders.tax_value_on_receiving),2),
+                    invoice.closedate 'Invoice Close Date',SUM(aqorders.quantityreceived) 'Quantity Received'
+
+                FROM aqbasket
+
+                LEFT JOIN aqorders ON (aqorders.basketno = aqbasket.basketno)
+                LEFT JOIN aqbooksellers vendor ON (vendor.id=aqbasket.booksellerid)
+                LEFT JOIN aqinvoices invoice ON (invoice.invoiceid=aqorders.invoiceid)
+                LEFT JOIN aqbudgets budget ON (budget.budget_id=aqorders.budget_id)
+                LEFT JOIN biblio ON (biblio.biblionumber = aqorders.biblionumber)
+
+                WHERE aqorders.orderstatus LIKE 'complete' AND vendor.id={vendor_id}
+
+                GROUP BY aqorders.basketno, invoice.invoicenumber, invoice.billingdate,invoice.closedate
+
+                ORDER BY vendor.name ASC'''.format(vendor_id=vendor.id)
+
+            headings = [
+                'Basket Name',
+                'Invoice Number',
+                'Bill Date',
+                'Amount',
+                'Discount',
+                'GST',
+                'Invoice Close Date',
+                'Quantity Received'
+            ]
+
+            db = MySQLdb.connect(
+                host="localhost",
+                user="root",
+                passwd="igcarlibrary",
+                db="library"
+            )
+            cur = db.cursor()
+
+            cur.execute(sql_query)
+            count=0 #To count the total number of entries
+
+            values = []
+            for row in cur.fetchall():
+                count+=1
+                values.append(row)
+
+            context = {
+                'vendor': vendor,
+                'count': count,
+                'values': values,
+                'headings': headings,
+                'report_type': 'Invoice Register'
+            }
+            return render(request, 'portal/circulation_reoprt.html', context)
+        except Exception as e:
+            print(e)
