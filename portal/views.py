@@ -583,16 +583,26 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
         items_list = []
         if self.q:
             print("**************88")
-            sql_query ='''
+            start = self.q
+
+            # Optimized sql query for efficient search of books. Reduced the seach time by around 10-12 seconds.
+            sql_query =f'''
                 SELECT items.itemnumber, concat( b.title, ' ', ExtractValue((
                     SELECT metadata
                     FROM biblio_metadata b2
                     WHERE b.biblionumber = b2.biblionumber),
-                      '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title FROM biblio b, items
+                      '//datafield[@tag="245"]/subfield[@code="b"]') ) AS 'booktitle' FROM biblio b, items
                     WHERE b.biblionumber=items.biblionumber AND
-                    title REGEXP '^{start}'
-                  '''.format(start=self.q)
+                    (
+                        b.title LIKE CONCAT('{start}', '%%')
+                        OR
+                        '{start}' LIKE CONCAT(b.title, '%%')
+                    )
+                    HAVING booktitle REGEXP '^{start}'
+                  '''
+            print(sql_query)
             items_list = items.raw(sql_query)
+            print(items_list)
             return items_list
             # items = items.annotate(full_name = Concat(
             #     'biblionumber__title',
