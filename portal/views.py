@@ -524,12 +524,11 @@ def holds_waiting(request):
     sql_query='''
             SELECT TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
             borrowers.email, borrowers.cardnumber,
-            reserves.waitingdate, items.barcode, biblio.title, reserves.timestamp
+             items.barcode, biblio.title, reserves.reservedate
             FROM reserves
             LEFT JOIN borrowers USING (borrowernumber)
             LEFT JOIN items USING (itemnumber)
             LEFT JOIN biblio ON (items.biblionumber = biblio.biblionumber)
-            WHERE reserves.waitingdate IS NOT NULL;
             '''
     db = MySQLdb.connect(
         host="localhost",
@@ -1446,7 +1445,7 @@ class VendorOrders(View):
 
     def get(self, request):
         form = AqBasketForm()
-        return render(request, 'portal/invoice_register.html', {'form':form})
+        return render(request, 'portal/vendor_orders.html', {'form':form})
 
     def post(self, request):
         try:
@@ -1467,8 +1466,7 @@ class VendorOrders(View):
                                 borrowers.surname,
                                 format(o.listprice,2) AS 'list price',
                                 format(o.unitprice,2) AS 'actual price',
-                                ba.basketno,
-                                o.entrydate
+                                ba.basketno
                         FROM aqorders o
                         LEFT JOIN aqbasket ba USING (basketno)
                         LEFT JOIN aqbooksellers v ON (v.id = ba.booksellerid)

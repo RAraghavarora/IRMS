@@ -2071,6 +2071,9 @@ class ItemCirculationAlertPreferences(models.Model):
 
 
 class Items(models.Model):
+    '''
+    If there are 3 copies of the same book, that means 3 Items instances for the same biblionmumber
+    '''
     itemnumber = models.AutoField(primary_key=True)
     biblionumber = models.ForeignKey(Biblio, models.DO_NOTHING, db_column='biblionumber')
     biblioitemnumber = models.ForeignKey(Biblioitems, models.DO_NOTHING, db_column='biblioitemnumber')
