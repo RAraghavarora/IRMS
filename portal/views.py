@@ -522,13 +522,17 @@ def hello(request):
 @login_required
 def holds_waiting(request):
     sql_query='''
-            SELECT TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
-            borrowers.email, borrowers.cardnumber,
-             items.barcode, biblio.title, reserves.reservedate
+            SELECT
+                TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
+                borrowers.email, borrowers.cardnumber,
+                items.barcode, biblio.title, reserves.reservedate
             FROM reserves
             LEFT JOIN borrowers USING (borrowernumber)
             LEFT JOIN items USING (itemnumber)
             LEFT JOIN biblio ON (items.biblionumber = biblio.biblionumber)
+            WHERE NOT EXISTS(
+                SELECT issue_id FROM issues WHERE items.itemnumber = issues.itemnumber
+            )
             '''
     db = MySQLdb.connect(
         host="localhost",

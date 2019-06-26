@@ -622,6 +622,33 @@ class Biblio(models.Model):
         managed = False
         db_table = 'biblio'
 
+    @property
+    def full_title(self):
+        import MySQLdb
+        db = MySQLdb.connect(
+            host="localhost",
+            user="root",
+            passwd="igcarlibrary",
+            db="library"
+        )
+        cur = db.cursor()
+        sql_query = '''
+            SELECT concat( biblio.title, ' ', ExtractValue((
+                    SELECT metadata
+                    FROM biblio_metadata b2
+                    WHERE biblio.biblionumber = b2.biblionumber),
+                      '//datafield[@tag="245"]/subfield[@code="b"]') )
+            FROM biblio
+            WHERE biblio.biblionumber = {}
+            '''.format(self.biblionumber)
+        try:
+            cur.execute(sql_query)
+        except:
+            print(sql_query)
+        return str(cur.fetchone()[0])
+
+    def __str__(self):
+        return self.full_title
 
 class BiblioFramework(models.Model):
     frameworkcode = models.CharField(primary_key=True, max_length=4)
@@ -2877,6 +2904,11 @@ class Reserves(models.Model):
         managed = False
         db_table = 'reserves'
 
+    def __str__(self):
+        if self.itemnumber:
+            return self.itemnumber.full_title
+        else:
+            return "DOUBT"
 
 class Reviews(models.Model):
     reviewid = models.AutoField(primary_key=True)
