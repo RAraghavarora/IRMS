@@ -3023,6 +3023,20 @@ class Serial(models.Model):
         managed = False
         db_table = 'serial'
 
+    #SERIAL STATUS:
+
+    # 1 = Expected
+    # 2 = Arrived
+    # 3 = Late
+    # 4 = Missing
+    # 5 = Not available
+    # 6 = Delete
+    # 7 = Claimed
+    # 8 = Stopped
+    # 41 = Missing (not received)
+    # 42 = Missing (sold out)
+    # 43 = Missing (damaged)
+    # 44 = Missing (lost)
 
 class Serialitems(models.Model):
     itemnumber = models.OneToOneField(Items, models.DO_NOTHING, db_column='itemnumber', primary_key=True)

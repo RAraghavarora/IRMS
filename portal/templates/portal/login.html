@@ -21,8 +21,8 @@
         <form class="login-form"  method="POST" action="{% url 'portal:login' %}">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.GET.next }}"/>
-          <input type="text" placeholder="username" name="username"/>
-          <input type="password" placeholder="password" name="password"/>
+          <input type="text" required="true" placeholder="username" name="username"/>
+          <input type="password" required="true" placeholder="password" name="password"/>
           <button>login</button>
         </form>
       </div>

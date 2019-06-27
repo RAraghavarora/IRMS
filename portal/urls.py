@@ -36,7 +36,7 @@ urlpatterns = [
     path('report_types/fine_report/',views.FineReport.as_view(), name='fine_report'),
     path('report_types/vendor_orders',views.VendorOrders.as_view(), name='vendor_orders'),
 
-
+    path('report_types/recent_arrivals', views.RecentArrivals.as_view(), name='recent_arrivals'),
     path('abc/',views.abc, name='abc'),
 
     path('demo/',views.demo, name='demo'),

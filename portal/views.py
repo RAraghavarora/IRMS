@@ -521,19 +521,83 @@ def hello(request):
 
 @login_required
 def holds_waiting(request):
-    sql_query='''
-            SELECT
-                TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
-                borrowers.email, borrowers.cardnumber,
-                items.barcode, biblio.title, reserves.reservedate
-            FROM reserves
-            LEFT JOIN borrowers USING (borrowernumber)
-            LEFT JOIN items USING (itemnumber)
-            LEFT JOIN biblio ON (items.biblionumber = biblio.biblionumber)
-            WHERE NOT EXISTS(
-                SELECT issue_id FROM issues WHERE items.itemnumber = issues.itemnumber
-            )
-            '''
+    print(request.POST)
+    if request.POST['type'] == 'waiting':
+        sql_query='''
+                SELECT
+                    TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
+                    borrowers.email, borrowers.cardnumber,
+                    items.barcode, biblio.title, reserves.reservedate
+                FROM reserves
+                LEFT JOIN borrowers USING (borrowernumber)
+                LEFT JOIN items USING (itemnumber)
+                LEFT JOIN biblio ON (reserves.biblionumber = biblio.biblionumber)
+                WHERE
+                    (reserves.itemnumber IS NOT NULL
+                    AND NOT EXISTS(SELECT issue_id FROM issues WHERE items.itemnumber = issues.itemnumber)
+                    )
+                    OR
+                    (reserves.itemnumber IS NULL
+                    AND EXISTS(
+                        SELECT itemnumber FROM items i2 WHERE i2.biblionumber=reserves.biblionumber
+                        AND NOT EXISTS(
+                            SELECT issue_id FROM issues iss WHERE iss.itemnumber=i2.itemnumber
+                            )
+                        )
+                    )
+                '''
+        headings = [
+            'Patron Name',
+            'Patron email',
+            'Patron membership number',
+            'Book barcode (Accession Number)',
+            'Book title',
+            'Reserve Date'
+        ]
+
+    elif request.POST['type'] == 'queue':
+        # Dobt in SQL query. Rectify this.
+        sql_query='''
+                SELECT
+                    TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ) AS full_name,
+                    borrowers.email, borrowers.cardnumber,
+                    items.barcode, biblio.title, reserves.reservedate,
+                    If (reserves.priority=1 AND issues.date_due IS NOT NULL, issues.date_due,
+                        IF( priority=1 AND MIN(is2.date_due) IS NOT NULL, MIN(is2.date_due), "Not Available")
+                    )
+                FROM reserves
+                LEFT JOIN borrowers USING (borrowernumber)
+                LEFT JOIN items USING (itemnumber)
+                LEFT JOIN biblio ON (reserves.biblionumber = biblio.biblionumber)
+                LEFT JOIN issues USING (itemnumber)
+                LEFT JOIN items AS it2 ON (it2.biblionumber = biblio.biblionumber)
+                LEFT JOIN issues AS is2 ON (is2.itemnumber = it2.itemnumber)
+                WHERE
+                    (reserves.itemnumber IS NOT NULL
+                    AND EXISTS(SELECT issue_id FROM issues is1 WHERE items.itemnumber = issues.itemnumber)
+                    )
+                    OR
+                    (reserves.itemnumber IS NULL
+                    AND NOT EXISTS(
+                        SELECT itemnumber FROM items i2 WHERE i2.biblionumber=reserves.biblionumber
+                        AND NOT EXISTS(
+                            SELECT issue_id FROM issues is2 WHERE is2.itemnumber=i2.itemnumber
+                            )
+                        )
+                    )
+                GROUP BY biblio.biblionumber, borrowers.borrowernumber, items.barcode, reserves.reservedate, issues.issue_id, reserves.priority
+                ORDER BY reservedate
+                '''
+        headings = [
+            'Patron Name',
+            'Patron email',
+            'Patron membership number',
+            'Book barcode (Accession Number)',
+            'Book title',
+            'Reserve Date',
+            'Remarks'
+        ]
+
     db = MySQLdb.connect(
         host="localhost",
         user="root",
@@ -549,19 +613,13 @@ def holds_waiting(request):
 
         values = []
         for row in cur.fetchall():
+            row = list(row)
             count+=1
-            print(row)
+            if request.POST['type'] == 'queue' and row[-1] != "Not Available":
+                row[-1] = "Will be available on " + row[-1]
             values.append(row)
 
-        headings = [
-            'Patron Name',
-            'Patron email',
-            'Patron membership number',
-            'Hold Date (Reserve Date)',
-            'Book barcode (Accession Number)',
-            'Book title',
-            'Last updated on'
-        ]
+
 
         context = {
             'count':count,
@@ -734,15 +792,15 @@ class NoDue(View):
         if not valid_patrons:
             return JsonResponse({'message': 'Please Enter IC numbers'})
 
-
         all_books = []
         all_fines=[]
         failed_patrons = []
 
-        for patron in valid_patrons:
+        temp_patrons = valid_patrons.copy()
+        for patron in temp_patrons:
             # Filter the Issues by the patron
+            print(patron.surname)
             issues = Issues.objects.filter(borrowernumber = patron)
-
             accountlines = Accountlines.objects.filter(borrowernumber = patron)
             balance = accountlines.aggregate(Sum('amountoutstanding'))['amountoutstanding__sum']
 
@@ -774,7 +832,7 @@ class NoDue(View):
         print(failed_data)
 
         date = datetime.date.today()
-
+        print(failed_patrons)
         if failed_patrons:
             for data_value in failed_data:
                 message = "No-Due Certificate could not be generated for the following patron "
@@ -894,6 +952,7 @@ def no_due_save(request):
     except KeyError:
         return JsonResponse({'message': "Invalid Request"})
 
+    # Saving the Patrons info and NDC in the database
     patrons=[]
     for patron_id, ref_number, ref_no_date in zip(patrons_ids, ref_number_list, ref_no_date_list):
         borrower = Borrowers.objects.get(borrowernumber=patron_id)
@@ -945,10 +1004,23 @@ class NoDueNonMembers(View):
     def post(self,request):
         try:
             data = request.POST
+            print(data)
             ic_number_list = data.getlist('ic_no')
             name_list = data.getlist('name')
             div_list = data.getlist('div')
             ref_no_date_list = data.getlist('ref_no_date')
+
+            # Remove null values from the list
+            index = 0
+            for ic,name,div,ref_no_date in zip(ic_number_list.copy(), name_list.copy(), div_list.copy(), ref_no_date_list.copy()):
+                if not (ic or name or div or ref_no_date):
+                    ic_number_list.pop(index)
+                    name_list.pop(index)
+                    div_list.pop(index)
+                    ref_no_date_list.pop(index)
+                else:
+                    index+=1
+
             addressee_id = request.POST['addressee']
             addressee = Addressee.objects.get(id=addressee_id)
 
@@ -1788,3 +1860,98 @@ class InvoiceRegister(View):
             return render(request, 'portal/circulation_reoprt.html', context)
         except Exception as e:
             print(e)
+
+
+#####################################   SERIAL REPORTS        ##########################
+class RecentArrivals(View):
+
+    def get(self, request):
+        return render(request, 'portal/recent_arrivals.html')
+
+    def post(self, request):
+        try:
+            data = request.POST
+            from_date = data['from_date']
+            to_date = data['to_date']
+            # Source of SQL - https://wiki.koha-community.org/wiki/SQL_Reports_Library#Serial_reports
+            sql_query = '''
+                SELECT
+                    concat( biblio.title, ' ', ExtractValue((
+                    SELECT metadata
+                    FROM biblio_metadata b2
+                    WHERE biblio.biblionumber = b2.biblionumber),
+                    '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
+                    biblioitems.publishercode,
+                    serial.subscriptionid,
+                    serial.biblionumber,
+                    serial.serialid,
+                    serial.serialseq,
+                    serial.planneddate,
+                    serial.publisheddate,
+                    IF
+                        (   LOCATE('<datafield tag="310"', biblio_metadata.metadata) = 0
+                                OR
+                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) = 0
+                                OR
+                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata))
+                                > LOCATE('</datafield>', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)),
+                        '',
+                        SUBSTRING( biblio_metadata.metadata,
+                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19,
+                            LOCATE('</subfield>', biblio_metadata.metadata, LOCATE('<subfield code="a">', biblio_metadata.metadata,
+                                LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19)
+                                -
+                            (LOCATE('<subfield code="a">',biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19)
+                            )
+                        )
+                    AS FREQUENCY
+                    FROM serial, biblio_metadata, biblio
+                    LEFT JOIN biblioitems USING (biblionumber)
+                    WHERE serial.biblionumber = biblio.biblionumber AND serial.biblionumber=biblio_metadata.biblionumber  AND (STATUS)=2
+                        AND DATE(planneddate) BETWEEN \'{from_date}\' AND \'{to_date}\'
+                    ORDER BY serial.subscriptionid ASC
+                '''.format(from_date=from_date, to_date=to_date)
+
+            headings = [
+                'Title',
+                'Publisher',
+                'Subscription ID',
+                'Biblionumber',
+                'Serial ID',
+                'Serial Seq',
+                'Planned Date',
+                'Published Date',
+                'Frequency'
+            ]
+
+            db = MySQLdb.connect(
+                host="localhost",
+                user="root",
+                passwd="igcarlibrary",
+                db="library"
+            )
+            cur = db.cursor()
+
+            cur.execute(sql_query)
+            count=0 #To count the total number of entries
+
+            values = []
+            for row in cur.fetchall():
+                count+=1
+                values.append(row)
+
+            context = {
+                'count': count,
+                'values': values,
+                'headings': headings,
+                'report_type': f'Serial Report - Recent Arrivals [FROM: {from_date} TO: {to_date}]'
+            }
+            return render(request, 'portal/circulation_reoprt.html', context)
+        except Exception as e:
+            print(e)
+
+def handler404(request):
+    '''
+    Custom 404 Error Page template
+    '''
+    return render(request, 'portal/404.html', status=404)
