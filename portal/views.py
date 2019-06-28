@@ -48,6 +48,84 @@ salted = b'salt_'
 # **************************************** IMPORTANT ************************************************************
 
 
+def execute_query(sql_query):
+    '''
+    Helper Function that takes a SQL query and returns the executed output
+    '''
+    db = MySQLdb.connect(
+        host="localhost",
+        user="root",
+        passwd="igcarlibrary",
+        db="library"
+    )
+    cur = db.cursor()
+
+    try:
+        cur.execute(sql_query)
+        return cur.fetchall()
+    except MySQLdb.Error as e:
+        print(e)
+        return JsonResponse({"message":"Unable to fetch data"})
+
+class Login(View):
+    '''Login the patron based on his userid and Bcrypt hashed password ? '''
+
+    def get(self, request):
+
+        # If the user is already logged in , redirect him to his profile page, else, the login page
+
+        if request.user.is_authenticated:
+
+            # If the user specified a next parameter, redirect him to that url else to his profile page
+            valuenext = request.GET.get('next')
+            if valuenext:
+                return HttpResponseRedirect(valuenext)
+            else:
+                return redirect('portal:profile')
+        else:
+            return render(request, 'portal/login.html')
+
+    def post(self, request):
+
+        data = request.POST
+        username = data['username']
+        password = data['password']
+
+        valuenext = request.POST.get('next')
+
+        # Authenticate the credentials
+        #This will change
+        user = authenticate(username = username, password = password) # Will return Null if the credentials are wrong
+
+        if user is not None:
+            login(request, user)
+            if valuenext:
+                return HttpResponseRedirect(valuenext)
+            else:
+                return redirect('portal:profile')
+        else:
+            return JsonResponse({'message':'The credentials are wrong'})
+
+def logout_view(request):
+    logout(request)
+    return redirect('portal:login')
+
+@login_required
+def profile(request):
+    try:
+        user = request.user
+        return render(request, 'portal/profile.html', {'name':user.username.capitalize()})
+    except Exception as unknown_exception:
+        return JsonResponse({'message':unknown_exception})
+
+@login_required
+def report_types(request):
+    '''
+    Display the different types of reports, and a live search bar to search for books.
+    Django-autocomplete-light has been used for the search bar
+    '''
+    form = ReservesForm()
+    return render(request, 'portal/types.html', {'form':form})
 
 class CirculationReport(View):
     '''
@@ -62,17 +140,6 @@ class CirculationReport(View):
     @method_decorator(login_required)
     def post(self, request):
         data = request.POST
-        print(data)
-        print(data)
-
-
-        db = MySQLdb.connect(
-            host="localhost",
-            user="root",
-            passwd="igcarlibrary",
-            db="library"
-        )
-        cur = db.cursor()
 
         from_timestamp = '{} 00:00:01'.format(data['from_date'])
         to_timestamp = '{} 23:59:59'.format(data['to_date'])
@@ -143,37 +210,26 @@ class CirculationReport(View):
             'Return Date'
         ]
 
-        print(sql_query)
+        count=0 #To count the total number of entries
 
-        try:
-            cur.execute(sql_query)
+        values = []
+        for row in execute_query(sql_query):
+            count+=1
+            row = list(row)
+            if not row[-1]:
+                row[-1]='Not returned'
+            values.append(row)
 
-            count=0 #To count the total number of entries
+        context = {
+            'count':count,
+            'values':values,
+            'headings':headings,
+            'report_type':'Circulation Report',
+            'from_date':from_date,
+            'to_date':to_date
+        }
 
-            values = []
-            for row in cur.fetchall():
-                count+=1
-                row = list(row)
-                if not row[-1]:
-                    row[-1]='Not returned'
-                values.append(row)
-
-            context = {
-                'count':count,
-                'values':values,
-                'headings':headings,
-                'report_type':'Circulation Report',
-                'from_date':from_date,
-                'to_date':to_date
-            }
-
-            # Save the data in request session
-            request.session['saved'] = data
-            return render(request, 'portal/circulation_reoprt.html', context)
-
-        except MySQLdb.Error as e:
-            print(e)
-            return JsonResponse({"message":"Unable to fetch data"})
+        return render(request, 'portal/circulation_reoprt.html', context)
 
 class GenerateReport(APIView):
 
@@ -216,60 +272,9 @@ class GenerateReport(APIView):
 
         return render(request, 'portal/generate_report.html', context)
 
-class Login(View):
-    '''Login the patron based on his userid and Bcrypt hashed password ? '''
-
-    def get(self, request):
-
-        # If the user is already logged in , redirect him to his profile page, else, the login page
-
-        if request.user.is_authenticated:
-
-            # If the user specified a next parameter, redirect him to that url else to his profile page
-            valuenext = request.GET.get('next')
-            if valuenext:
-                return HttpResponseRedirect(valuenext)
-            else:
-                return redirect('portal:profile')
-        else:
-            return render(request, 'portal/login.html')
-
-    def post(self, request):
-
-        data = request.POST
-        username = data['username']
-        password = data['password']
-
-        valuenext = request.POST.get('next')
-
-        # Authenticate the credentials
-        #This will change
-        user = authenticate(username = username, password = password) # Will return Null if the credentials are wrong
-
-        if user is not None:
-            login(request, user)
-            if valuenext:
-                return HttpResponseRedirect(valuenext)
-            else:
-                return redirect('portal:profile')
-        else:
-            return JsonResponse({'message':'The credentials are wrong'})
-
-def logout_view(request):
-    logout(request)
-    return redirect('portal:login')
-
-@login_required
-def profile(request):
-    try:
-        user = request.user
-        return render(request, 'portal/profile.html', {'name':user.username.capitalize()})
-    except Exception as unknown_exception:
-        return JsonResponse({'message':unknown_exception})
 
 def demo(request):
     return JsonResponse(request.session['saved'])
-
 
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
@@ -310,82 +315,62 @@ def checked_out(request):
         ORDER BY duedate
         '''
 
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
-
     total_books = Items.objects.filter(itype='C').count # itype 'C' means the items that are 'Circulated' and ignores the journals, etc.
 
-    try:
-        cur.execute(sql_query)
+    count=0 #To count the total number of entries
 
-        count=0 #To count the total number of entries
+    values = []
+    for row in execute_query(sql_query):
 
-        values = []
-        for row in cur.fetchall():
+        # Issues are present only for the books currently checked out.
+        # If an issue exists, for an item that has been checked in or out anytime after the issue date, ignore that issue
+        # Because that issue exists due to inconsistent data.
+        # Because of shifting to Koha in february 2019
 
-            # Issues are present only for the books currently checked out.
-            # If an issue exists, for an item that has been checked in or out anytime after the issue date, ignore that issue
-            # Because that issue exists due to inconsistent data.
-            # Because of shifting to Koha in february 2019
+        issuedate = row[6].date() # Convert datetime to date, because datelastseen is date and not datetime
+        barcode = row[2]
+        duedate = row[7]
 
-            issuedate = row[6].date() # Convert datetime to date, because datelastseen is date and not datetime
-            barcode = row[2]
-            duedate = row[7]
+        item = Items.objects.get(barcode = barcode)
+        date_last_seen = item.datelastseen
 
-            item = Items.objects.get(barcode = barcode)
-            date_last_seen = item.datelastseen
-
-            if date_last_seen > issuedate:
-                pass
+        if date_last_seen > issuedate:
+            pass
+        else:
+            issuedate = row[6]
+            row = list(row)
+            if duedate > issuedate:
+                diff = (duedate - issuedate)
+                remark = "Time Left for Due date: {time}".format(time=str(diff))
             else:
-                issuedate = row[6]
-                row = list(row)
-                if duedate > issuedate:
-                    diff = (duedate - issuedate)
-                    remark = "Time Left for Due date: {time}".format(time=str(diff))
-                else:
-                    diff = ( issuedate - duedate)
+                diff = ( issuedate - duedate)
 
-                    remark = "{days} Overdue".format(days=str(diff))
-                row.append(remark)
-                values.append(row)
-                count+=1
+                remark = "{days} Overdue".format(days=str(diff))
+            row.append(remark)
+            values.append(row)
+            count+=1
 
-        headings = [
-            'Title of the book',
-            'Author',
-            'Barcode (Accession Number)',
-            'Patron Name',
-            'Membership Number',
-            'Email ID',
-            'Issue Date',
-            'Due date',
-            'Remarks'
-        ]
+    headings = [
+        'Title of the book',
+        'Author',
+        'Barcode (Accession Number)',
+        'Patron Name',
+        'Membership Number',
+        'Email ID',
+        'Issue Date',
+        'Due date',
+        'Remarks'
+    ]
 
-        context = {
-            'count':count,
-            'total':total_books,
-            'values':values,
-            'headings':headings,
-            'report_type':'Circulation Report - Books currently checked out'
-        }
+    context = {
+        'count':count,
+        'total':total_books,
+        'values':values,
+        'headings':headings,
+        'report_type':'Circulation Report - Books currently checked out'
+    }
 
-        return render(request, 'portal/circulation_reoprt.html', context)
-
-    except MySQLdb.Error as e:
-        print(e)
-        return JsonResponse({"message":"Unable to fetch data"})
-
-@login_required
-def report_types(request):
-    form = ReservesForm()
-    return render(request, 'portal/types.html', {'form':form})
+    return render(request, 'portal/circulation_reoprt.html', context)
 
 @login_required
 def inactive_patrons(request):
@@ -400,46 +385,31 @@ def inactive_patrons(request):
         ORDER BY inactive_days DESC
         '''
 
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
+    count=0 #To count the total number of entries
 
-    try:
-        cur.execute(sql_query)
+    values = []
+    for row in execute_query(sql_query):
+        count+=1
+        row = list(row)
+        inactive_days = row[4]
+        row[4] = "Inactive since {} days".format(inactive_days)
+        values.append(row)
 
-        count=0 #To count the total number of entries
-
-        values = []
-        for row in cur.fetchall():
-            count+=1
-            row = list(row)
-            inactive_days = row[4]
-            row[4] = "Inactive since {} days".format(inactive_days)
-            values.append(row)
-
-        headings = [
-            'Patron Name',
-            'Membership Number',
-            'Category Code',
-            'Email ID',
-            'Remarks'
-        ]
-        total_patrons = Borrowers.objects.all().count()
-        context = {
-            'count':count,
-            'total': total_patrons,
-            'values':values,
-            'headings':headings,
-            'report_type':'Circulation Report - Inactive Patrons'
-        }
-
-    except MySQLdb.Error as e:
-        print(e)
-        return JsonResponse({'message':"Unable to fetch data"})
+    headings = [
+        'Patron Name',
+        'Membership Number',
+        'Category Code',
+        'Email ID',
+        'Remarks'
+    ]
+    total_patrons = Borrowers.objects.all().count()
+    context = {
+        'count':count,
+        'total': total_patrons,
+        'values':values,
+        'headings':headings,
+        'report_type':'Circulation Report - Inactive Patrons'
+    }
 
     return render(request, 'portal/circulation_reoprt.html', context=context)
 
@@ -459,41 +429,25 @@ def inactive_books(request):
             AND biblio.biblionumber=items.biblionumber
             AND items.itype = 'C';
             '''
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
+    count=0 #To count the total number of entries
 
-    try:
-        cur.execute(sql_query)
+    values = []
+    for row in execute_query(sql_query):
+        count+=1
+        values.append(row)
 
-        count=0 #To count the total number of entries
+    headings = [
+        'Book title',
+        'Book author',
+        'Book barcode (Accession Number)',
+    ]
 
-        values = []
-        for row in cur.fetchall():
-            count+=1
-            print(row)
-            values.append(row)
-
-        headings = [
-            'Book title',
-            'Book author',
-            'Book barcode (Accession Number)',
-        ]
-
-        context = {
-            'count':count,
-            'values':values,
-            'headings':headings,
-            'report_type':'Circulation Report - Inactive Books'
-        }
-
-    except MySQLdb.Error as e:
-        print(e)
-        return JsonResponse({'message':"Unable to fetch data"})
+    context = {
+        'count':count,
+        'values':values,
+        'headings':headings,
+        'report_type':'Circulation Report - Inactive Books'
+    }
 
     return render(request, 'portal/circulation_reoprt.html', context=context)
 
@@ -512,7 +466,6 @@ class Search(View):
         return HttpResponse(resp, content_type='application/json')
 
 def hello(request):
-
     items = Items.objects.filter(itype='C', biblionumber__title__icontains='sql')
     data = [item.biblionumber for item in items]
     data = serializers.serialize('json', data)
@@ -521,7 +474,6 @@ def hello(request):
 
 @login_required
 def holds_waiting(request):
-    print(request.POST)
     if request.POST['type'] == 'waiting':
         sql_query='''
                 SELECT
@@ -556,7 +508,7 @@ def holds_waiting(request):
         ]
 
     elif request.POST['type'] == 'queue':
-        # Dobt in SQL query. Rectify this.
+        # Doubt in SQL query. Rectify this.
         sql_query='''
                 SELECT
                     TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ) AS full_name,
@@ -598,42 +550,26 @@ def holds_waiting(request):
             'Remarks'
         ]
 
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
+    count=0 #To count the total number of entries
 
-    try:
-        cur.execute(sql_query)
-
-        count=0 #To count the total number of entries
-
-        values = []
-        for row in cur.fetchall():
-            row = list(row)
-            count+=1
-            if request.POST['type'] == 'queue' and row[-1] != "Not Available":
-                row[-1] = "Will be available on " + row[-1]
-            values.append(row)
+    values = []
+    for row in execute_query(sql_query):
+        row = list(row)
+        count+=1
+        if request.POST['type'] == 'queue' and row[-1] != "Not Available":
+            row[-1] = "Will be available on " + row[-1]
+        values.append(row)
 
 
 
-        context = {
-            'count':count,
-            'values':values,
-            'headings':headings,
-            'report_type':'Circulation Report - Holds Waiting'
-        }
-
-    except MySQLdb.Error as e:
-        print(e)
-        return JsonResponse({'message':"Unable to fetch data"})
+    context = {
+        'count':count,
+        'values':values,
+        'headings':headings,
+        'report_type':'Circulation Report - Holds Waiting'
+    }
 
     return render(request, 'portal/circulation_reoprt.html', context=context)
-
 
 class BookAutocomplete(autocomplete.Select2QuerySetView):
     #Using Django-autocomplete library
@@ -643,7 +579,6 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
 
         items_list = []
         if self.q:
-            print("**************88")
             start = self.q
 
             # Optimized sql query for efficient search of books. Reduced the seach time by around 10-12 seconds.
@@ -661,10 +596,7 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
                     )
                     HAVING booktitle REGEXP '^{start}'
                   '''
-            print(sql_query)
             items_list = items.raw(sql_query)
-            print(items_list)
-            return items_list
             # items = items.annotate(full_name = Concat(
             #     'biblionumber__title',
             #     Value(' '),
@@ -696,7 +628,6 @@ def book_detail(request):
     '''
     if request.method == 'POST':
         data = request.POST
-        print(data)
         try:
             itemnumber = data['itemnumber']
             item = Items.objects.get(itemnumber=itemnumber)
@@ -705,9 +636,9 @@ def book_detail(request):
             context = {
                 'title': item.full_title,
                 'author': biblio.author,
-                'barcode': item.barcode
+                'barcode': item.barcode,
+                'call_number': item.itemcallnumber
             }
-            print(context)
             return render(request, 'portal/book_detail.html', context)
 
         except KeyError:
@@ -754,7 +685,6 @@ class NoDue(View):
         # Get all the addressee
         addressee_list = Addressee.objects.all()
         context = {'addressee_list':addressee_list}
-        print(context)
         return render(request, 'portal/no_due_input.html', context=context)
 
     def post(self, request):
@@ -912,7 +842,6 @@ class NoDue(View):
 
         # Save the data in session to use while storing the no due in database
         request.session['saved'] = data
-
 
         return render(request, 'portal/no_due.html', context)
 
@@ -1235,18 +1164,6 @@ class FineReportsSummary(View):
                 GROUP BY a.description, b.cardnumber, b.sort1, b.surname, ni.timestamp, b.address
                 ORDER BY b.surname,  ni.timestamp DESC) as res1 group by pat, icno, emp, divi order by icno, emp
                 '''.format(from_date=from_date, to_date=to_date, unit=unit_substr)
-            print(sql_query)
-
-            db = MySQLdb.connect(
-                host="localhost",
-                user="root",
-                passwd="igcarlibrary",
-                db="library"
-            )
-            cur = db.cursor()
-
-            #Execute the SQL query
-            cur.execute(sql_query)
 
             count = 0 # To count the total number of rows
             values = []
@@ -1258,7 +1175,7 @@ class FineReportsSummary(View):
             mem_nos = []
             fines = []
 
-            for row in cur.fetchall():
+            for row in execute_query(sql_query):
                 count+=1
                 values.append(row)
 
@@ -1270,7 +1187,6 @@ class FineReportsSummary(View):
 
             # Get the report number by incrementing the maximum report number by 1
             f = FineReportSummary()
-            print(dir(f))
             reports = FineReportSummary.objects.all()
             max_report_no = reports.aggregate(Max('report_number'))['report_number__max']
             if max_report_no:
@@ -1433,89 +1349,72 @@ class FineReport(View):
         return render(request, 'portal/fine_report_input.html', {"addressee_list": addressee_list, 'units':units})
 
     def post(self, request):
-        try:
-            data = request.POST
-            from_date = data['from_date']
-            to_date = data['to_date']
-            unit = data['unit']
-            if unit == 'BHAVINI':
-                unit_substr = "BH"
-            else:
-                unit_substr = unit[0]
-            sql_query='''
-                SELECT
-                    b.cardnumber as 'Membership No.',TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'IC No.',
-                    TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ),
-                    concat( bib.title, ' ', ExtractValue((
-                            SELECT metadata
-                            FROM biblio_metadata b2
-                            WHERE bib.biblionumber = b2.biblionumber),
-                              '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
-                    i.barcode as 'Accession Number',
-                    ni.issuedate as 'Issue Date', ni.date_due as 'Due Date',
-                    ni.returndate AS 'Return Date' , round(a.amountoutstanding,2) as 'Fine Amount'
-                FROM accountlines a
-                  LEFT JOIN borrowers b ON ( b.borrowernumber = a.borrowernumber )
-                  LEFT JOIN items i ON ( a.itemnumber = i.itemnumber )
-                  LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
-                  LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
-                WHERE
-                    a.amountoutstanding > 0 and ni.returndate is not null and DATE (ni.returndate)  BETWEEN \'{from_date}\' AND \'{to_date}\'
-                    AND b.sort1 LIKE \'{unit}%\'
-                GROUP BY a.description, b.cardnumber, b.sort1, b.surname,b.firstname, bib.title, i.barcode, ni.issuedate, ni.date_due, ni.returndate, ni.date_due, a.amountoutstanding, ni.timestamp, bib.biblionumber
-                ORDER BY b.sort1, b.surname, ni.timestamp DESC
-            '''.format(from_date=from_date, to_date=to_date, unit=unit_substr)
-            print(unit)
-            print(sql_query)
+        data = request.POST
+        from_date = data['from_date']
+        to_date = data['to_date']
+        unit = data['unit']
+        if unit == 'BHAVINI':
+            unit_substr = "BH"
+        else:
+            unit_substr = unit[0]
+        sql_query='''
+            SELECT
+                b.cardnumber as 'Membership No.',TRIM(LEADING '0' FROM if(substr(b.sort1,1,2)='BH',substr(b.sort1,3),substr(b.sort1,2))) as 'IC No.',
+                TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ),
+                concat( bib.title, ' ', ExtractValue((
+                        SELECT metadata
+                        FROM biblio_metadata b2
+                        WHERE bib.biblionumber = b2.biblionumber),
+                          '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
+                i.barcode as 'Accession Number',
+                ni.issuedate as 'Issue Date', ni.date_due as 'Due Date',
+                ni.returndate AS 'Return Date' , round(a.amountoutstanding,2) as 'Fine Amount'
+            FROM accountlines a
+              LEFT JOIN borrowers b ON ( b.borrowernumber = a.borrowernumber )
+              LEFT JOIN items i ON ( a.itemnumber = i.itemnumber )
+              LEFT JOIN biblio bib ON ( i.biblionumber = bib.biblionumber )
+              LEFT JOIN ( SELECT * FROM issues UNION SELECT * FROM old_issues ) ni ON ( ni.itemnumber = i.itemnumber AND ni.borrowernumber = a.borrowernumber )
+            WHERE
+                a.amountoutstanding > 0 and ni.returndate is not null and DATE (ni.returndate)  BETWEEN \'{from_date}\' AND \'{to_date}\'
+                AND b.sort1 LIKE \'{unit}%\'
+            GROUP BY a.description, b.cardnumber, b.sort1, b.surname,b.firstname, bib.title, i.barcode, ni.issuedate, ni.date_due, ni.returndate, ni.date_due, a.amountoutstanding, ni.timestamp, bib.biblionumber
+            ORDER BY b.sort1, b.surname, ni.timestamp DESC
+        '''.format(from_date=from_date, to_date=to_date, unit=unit_substr)
 
-            db = MySQLdb.connect(
-                host="localhost",
-                user="root",
-                passwd="igcarlibrary",
-                db="library"
-            )
-            cur = db.cursor()
+        count=0 #To count the total number of entries
 
-            cur.execute(sql_query)
-            count=0 #To count the total number of entries
+        values = []
+        for row in execute_query(sql_query):
+            count+=1
+            row=list(row)
+            # Replace Null with empty string for Return date
+            if not row[-2]:
+                row[-2] = " "
+            values.append(row)
 
-            values = []
-            for row in cur.fetchall():
-                count+=1
-                row=list(row)
-                # Replace Null with empty string for Return date
-                if not row[-2]:
-                    row[-2] = " "
-                values.append(row)
+        headings = [
+            'Membership Number',
+            'IC Number',
+            'Employee Name',
+            'Book Title',
+            'Accession Number(Barcode)',
+            'Issue Date',
+            'Due Date',
+            'Return Date',
+            'Fine Amount'
+        ]
 
-            headings = [
-                'Membership Number',
-                'IC Number',
-                'Employee Name',
-                'Book Title',
-                'Accession Number(Barcode)',
-                'Issue Date',
-                'Due Date',
-                'Return Date',
-                'Fine Amount'
-            ]
+        context = {
+            'count':count,
+            'values':values,
+            'headings':headings,
+            'report_type':'Patron Report - Fines',
+            'from_date': from_date,
+            'to_date': to_date,
+            'unit': unit
+        }
 
-            context = {
-                'count':count,
-                'values':values,
-                'headings':headings,
-                'report_type':'Patron Report - Fines',
-                'from_date': from_date,
-                'to_date': to_date,
-                'unit': unit
-            }
-
-            return render(request, 'portal/circulation_reoprt.html', context=context)
-
-        except MySQLdb.Error as e:
-            print(e)
-            return JsonResponse({'message':"Unable to fetch data"})
-
+        return render(request, 'portal/circulation_reoprt.html', context=context)
 
 class VendorOrders(View):
 
@@ -1554,19 +1453,10 @@ class VendorOrders(View):
                         ORDER BY o.entrydate, o.orderstatus
                         '''.format(from_date=from_date, to_date=to_date, vendor_id=vendor.id)
 
-            db = MySQLdb.connect(
-                host="localhost",
-                user="root",
-                passwd="igcarlibrary",
-                db="library"
-            )
-            cur = db.cursor()
-
-            cur.execute(sql_query)
             count=0 #To count the total number of entries
 
             values = []
-            for row in cur.fetchall():
+            for row in execute_query(sql_query):
                 count+=1
                 row=list(row)
                 values.append(row)
@@ -1623,19 +1513,10 @@ def overdue_orders(request):
                 ORDER BY o.entrydate, o.orderstatus
                 '''.format(from_date=from_date, to_date=to_date, vendor_id=vendor.id)
 
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
-
-    cur.execute(sql_query)
     count=0 #To count the total number of entries
 
     values = []
-    for row in cur.fetchall():
+    for row in execute_query(sql_query):
         count+=1
         row=list(row)
         values.append(row)
@@ -1663,8 +1544,6 @@ def overdue_orders(request):
 
     return render(request, 'portal/circulation_reoprt.html', context=context)
 
-
-
 def suggested_books(request):
     sql_query = '''
                 SELECT r.title 'Title',r.author 'Author', r.publishercode 'Publisher',r.copyrightdate 'Year', r.STATUS,
@@ -1688,20 +1567,10 @@ def suggested_books(request):
         'Quantity',
         'Price',
     ]
-
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
-
-    cur.execute(sql_query)
     count=0 #To count the total number of entries
 
     values = []
-    for row in cur.fetchall():
+    for row in execute_query(sql_query):
         values.append(row)
 
     context = {
@@ -1756,20 +1625,10 @@ def overdue_orders(request):
         'Vendor',
         'Status',
     ]
-
-    db = MySQLdb.connect(
-        host="localhost",
-        user="root",
-        passwd="igcarlibrary",
-        db="library"
-    )
-    cur = db.cursor()
-
-    cur.execute(sql_query)
     count=0 #To count the total number of entries
 
     values = []
-    for row in cur.fetchall():
+    for row in execute_query(sql_query):
         count+=1
         values.append(row)
 
@@ -1833,20 +1692,10 @@ class InvoiceRegister(View):
                 'Invoice Close Date',
                 'Quantity Received'
             ]
-
-            db = MySQLdb.connect(
-                host="localhost",
-                user="root",
-                passwd="igcarlibrary",
-                db="library"
-            )
-            cur = db.cursor()
-
-            cur.execute(sql_query)
             count=0 #To count the total number of entries
 
             values = []
-            for row in cur.fetchall():
+            for row in execute_query(sql_query):
                 count+=1
                 values.append(row)
 
@@ -1923,20 +1772,10 @@ class RecentArrivals(View):
                 'Published Date',
                 'Frequency'
             ]
-
-            db = MySQLdb.connect(
-                host="localhost",
-                user="root",
-                passwd="igcarlibrary",
-                db="library"
-            )
-            cur = db.cursor()
-
-            cur.execute(sql_query)
             count=0 #To count the total number of entries
 
             values = []
-            for row in cur.fetchall():
+            for row in execute_query(sql_query):
                 count+=1
                 values.append(row)
 
@@ -1950,7 +1789,7 @@ class RecentArrivals(View):
         except Exception as e:
             print(e)
 
-def handler404(request):
+def handler404(request, exception):
     '''
     Custom 404 Error Page template
     '''
