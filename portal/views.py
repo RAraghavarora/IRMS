@@ -65,6 +65,7 @@ def execute_query(sql_query):
         return cur.fetchall()
     except MySQLdb.Error as e:
         print(e)
+        return None
         return JsonResponse({"message":"Unable to fetch data"})
 
 class Login(View):
@@ -576,11 +577,10 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
 
     def get_queryset(self):
         items = Items.objects.filter(itype='C').order_by('itemnumber')
-
+        print("Helloiui")
         items_list = []
         if self.q:
             start = self.q
-
             # Optimized sql query for efficient search of books. Reduced the seach time by around 10-12 seconds.
             sql_query =f'''
                 SELECT items.itemnumber, concat( b.title, ' ', ExtractValue((
@@ -597,6 +597,7 @@ class BookAutocomplete(autocomplete.Select2QuerySetView):
                     HAVING booktitle REGEXP '^{start}'
                   '''
             items_list = items.raw(sql_query)
+            return items_list
             # items = items.annotate(full_name = Concat(
             #     'biblionumber__title',
             #     Value(' '),
@@ -1788,6 +1789,103 @@ class RecentArrivals(View):
             return render(request, 'portal/circulation_reoprt.html', context)
         except Exception as e:
             print(e)
+
+class BarcodeCSV(View):
+
+    def get(self, request):
+        return render(request, 'portal/csv_upload.html')
+
+    def post(self, request):
+        if not request.FILES['csv']:
+            messages.warning(request,'No file uploaded')
+            return redirect('portal:barcode_csv')
+
+
+        csv_files = request.FILES.getlist('csv')
+
+        # Checking if the files are in CSV format
+        failure = 0
+        for csv in csv_files:
+            if not csv.name.endswith('.csv'):
+                messages.warning(request, 'The file: \'{name}\' is not in CSV format.'.format(name=csv.name))
+                failure = 1
+        if failure:
+            return redirect('portal:barcode_csv')
+
+        barcodes = []
+        status = []
+        incorrect_count = correct_count =0
+        for csv in csv_files:
+            # Reading the uploaded CSV file
+            data = csv.read()
+            # Split along new line
+            file_barcodes = re.split('\n', data.decode('utf-8'))
+
+            barcodes += [barcode.replace('\r','') for barcode in file_barcodes]
+            #
+            # for index,barcode in enumerate(file_barcodes):
+            #     if barcode:
+            #         try:
+            #             # Verify if an item with the given barcode exists in the database
+            #             item = Items.objects.get(barcode=int(barcode))
+            #             status.append(item)
+            #             correct_count+=1
+            #             print(correct_count)
+            #         except Exception as e:
+            #             status.append("")
+            #             incorrect_count += 1
+            #     else:
+            #         continue
+        sql_query = '''
+                    SELECT barcode,
+                    concat( b.title, ' ', ExtractValue((
+                        SELECT metadata
+                        FROM biblio_metadata b2
+                        WHERE b.biblionumber = b2.biblionumber),
+                          '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
+                    author, itype, "Available"
+                    FROM items
+                    LEFT JOIN biblio b USING (biblionumber)
+                    WHERE barcode IN {barcodes}
+                    AND itype in ('C', 'DIVB', 'R', 'SPR', 'STB', 'STD')
+
+                    UNION ALL
+
+                    SELECT barcode,
+                    concat( b.title, ' ', ExtractValue((
+                        SELECT metadata
+                        FROM biblio_metadata b2
+                        WHERE b.biblionumber = b2.biblionumber),
+                          '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
+                    author, itype, "Unavailable"
+                    FROM items
+                    LEFT JOIN biblio b USING (biblionumber)
+                    WHERE barcode NOT IN {barcodes}
+                    AND itype in ('C', 'DIVB', 'R', 'SPR', 'STB', 'STD')
+                    '''.format(barcodes = tuple(barcodes))
+
+        correct_count = 0
+        incorrect_count = 0
+        values = []
+        query_results = execute_query(sql_query)
+        if not query_results:
+            print("ERROR")
+
+        for row in query_results:
+            if row[-1] == 'Available':
+                correct_count +=1
+            else:
+                incorrect_count +=1
+            values.append(row)
+
+
+        context = {
+            'values': values,
+            'correct_count': correct_count,
+            'incorrect_count': incorrect_count,
+            'total': len(values)
+        }
+        return render(request, 'portal/barcode_report.html', context=context)
 
 def handler404(request, exception):
     '''

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <link href="{% static 'portal/css/animate.css' %}" rel="stylesheet" />
+      <link href="{% static 'bootstrap/css/bootstrap.css' %}" rel="stylesheet">
+      <link href="{% static 'bootstrap/css/bootstrap-select.css' %}" rel="stylesheet">
+
+      <link href="{% static 'node-waves/waves.css' %}" rel="stylesheet">
+      <link rel="stylesheet" href="{% static 'portal/css/style.css' %}">
+      <link rel="stylesheet" href="{% static 'portal/css/all-themes.css' %}">
+      <link href="{% static 'portal/css/dataTables.bootstrap.css' %}" rel="stylesheet">
+      <link href="{% static 'jquery/css/jquery.dataTables.min.css' %}" rel="stylesheet">
+
+      <title> IRMS - IGCAR</title>
+
+      <style>
+        .foo {
+          float: left;
+          width: 50px;
+          height: 30px;
+          margin: 5px;
+          border: 1px solid rgba(0, 0, 0, .2);
+        }
+
+        .green {
+          background: #4BB543;
+        }
+        .red {
+          background: #FC100D;
+        }
+      </style>
+  </head>
+
+  <body>
+      <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
+      <h3 style="text-align: center"> Barcode Report</h3>
+
+      <h3>
+        <small> Total number of correct barcodes: {{correct_count}} <br>Total number of incorrect barcodes: {{incorrect_count}}
+          <br> Total number of entries: {{total}}
+        </small>
+      </h3>
+      <a href="{% url 'portal:report_types' %}" class="btn btn-info" role="button">Go To Reports Home</a>
+      <input value="Export as CSV 2" type="button" onclick="$('#StatusTable').table2CSV({header:['Barcode','Title','Author', 'Type', 'Status']})">
+
+      <form name="FilterForm" id="FilterForm" action="" method="">
+          <input type="checkbox" name="filterStatus" value="Invalid" />
+          <label for="filter_1">Show only Invalid Barcodes</label> &nbsp;
+          <input type="checkbox" name="filterStatus" value="Valid" />
+          <label for="filter_2">Show only Valid Bacodes</label>
+      </form>
+      <div class="row clearfix">
+        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+            <div class="card">
+                <div class="body">
+                    <table class="table table-bordered js-exportable" id='StatusTable'>
+                        <thead>
+                          <tr>
+                              <th>Barcode</th>
+                              <th>Book Name </th>
+                              <th> Author </th>
+                              <th> Item Type
+                              <th> Status </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {% for row in values %}
+                            {% if row.4 == "Available" %}
+                          <tr class = "Valid">
+                            {% else %}
+                          <tr class = "Invalid">
+                            {% endif %}
+                            {% for value in row %}
+                            <td> {{value}} </td>
+                            {% endfor %}
+                            <!-- <td>
+                              {% if data_value.1 %}
+                                <div class="foo green"> Available </div>
+                              {% else %}
+                                <div class="foo red"> Unavailable </div>
+                              {% endif %}
+                            </td> -->
+                          </tr>
+                          {% endfor %}
+
+                        </tbody>
+
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- #END# Striped Rows -->
+
+
+
+    <script src="{% static 'jquery/js/jquery.js' %}"></script>
+    <script src="{% static 'jquery/js/jquery.min.js' %}"></script>
+
+
+    <script>
+    $("input[name='filterStatus']").change(function () {
+      var classes = [];
+      $("input[name='filterStatus']").each(function () {
+          if ($(this).is(":checked")) { classes.push('.' + $(this).val()); }
+            });
+          console.log(classes)
+            if (classes == "" || classes.length==2) { // if no filters selected, show all items
+                $("#StatusTable tbody tr").show();
+            } else { // otherwise, hide everything...
+                $("#StatusTable tbody tr").hide();
+
+                $("#StatusTable tr").each(function () {
+                    var show = true;
+                    var row = $(this);
+                    classes.forEach(function (className) {
+                        try {
+                          if (!(('.' + row.prop('class')).startsWith(className))) {show=false;}
+                          console.log(className)
+                          console.log(row.prop('class'))
+                        }
+                        catch(err){
+                          console.log(err)
+                        }
+                    });
+                    if (show) { row.show(); }
+                });
+              }
+        });
+    </script>
+
+    <script>
+    jQuery.fn.table2CSV = function(options) {
+      var options = jQuery.extend({
+          separator: ',',
+          header: [],
+          delivery: 'popup' // popup, value
+      },
+      options);
+
+      var csvData = [];
+      var headerArr = [];
+      var el = this;
+
+      //header
+      var numCols = options.header.length;
+      var tmpRow = []; // construct header avalible array
+
+      if (numCols > 0) {
+          for (var i = 0; i < numCols; i++) {
+              tmpRow[tmpRow.length] = formatData(options.header[i]);
+          }
+      } else {
+          $(el).filter(':visible').find('th').each(function() {
+              if ($(this).css('display') != 'none') tmpRow[tmpRow.length] = formatData($(this).html());
+          });
+      }
+
+      row2CSV(tmpRow);
+
+      // actual data
+      $(el).find('tr').each(function() {
+          var tmpRow = [];
+          $(this).filter(':visible').find('td').each(function() {
+              if ($(this).css('display') != 'none') tmpRow[tmpRow.length] = formatData($(this).html());
+          });
+          row2CSV(tmpRow);
+      });
+      if (options.delivery == 'popup') {
+          var mydata = csvData.join('\n');
+          return popup(mydata);
+      } else {
+          var mydata = csvData.join('\n');
+          return mydata;
+      }
+
+      function row2CSV(tmpRow) {
+          var tmp = tmpRow.join('') // to remove any blank rows
+          // alert(tmp);
+          if (tmpRow.length > 0 && tmp != '') {
+              var mystr = tmpRow.join(options.separator);
+              csvData[csvData.length] = mystr;
+          }
+      }
+      function formatData(input) {
+          // replace " with “
+          var regexp = new RegExp(/["]/g);
+          var output = input.replace(regexp, "“");
+          //HTML
+          var regexp = new RegExp(/\<[^\<]+\>/g);
+          var output = output.replace(regexp, "");
+          if (output == "") return '';
+          return '"' + output + '"';
+      }
+      function popup(data) {
+
+
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data));
+        element.setAttribute('download', 'Barcode_Report.csv');
+        element.style.display = 'none';
+        if (typeof element.download != "undefined") {
+          //browser has support - process the download
+          document.body.appendChild(element);
+          element.click();
+          document.body.removeChild(element);
+        }
+        else {
+          //browser does not support - alert the user
+          alert('This functionality is not supported by the current browser, recommend trying with Google Chrome instead.  (http://caniuse.com/#feat=download)');
+        }
+          //
+          // var generator = window.open('hello.csv');
+          // // generator.document.write('<html><head><title>CSV</title>');
+          // // generator.document.write('</head><body >');
+          // // generator.document.write('<textArea cols=70 rows=15 wrap="off" >');
+          // generator.document.write(data);
+          // // generator.document.write('</textArea>');
+          // // generator.document.write('</body></html>');
+          // console.log(generator.attributes)
+          // generator.document.close();
+
+          return true;
+      }
+  };
+
+    </script>
+  </body>
+
+</html>

@@ -133,5 +133,5 @@ STATIC_URL = '/static/'
 LOGIN_URL = '/login'
 LOGIN_REDIRECT_URL = '/login'
 
-from django.contrib.messages import constants as message_constants
-MESSAGE_LEVEL = message_constants.DEBUG
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'

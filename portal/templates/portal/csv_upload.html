@@ -1,0 +1,44 @@
+{% extends 'portal/base.html' %}
+{% block content %}
+
+<div class="card">
+    <div class="header" >
+        <h1>IRMS | IGCAR </h1>
+            {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+              </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+      </br></br>
+        <h2>
+            Generate Barcode Report
+        </h2>
+
+
+    <form method="POST" action="{% url 'portal:barcode_csv' %}" enctype="multipart/form-data" style="padding-left: 56px">
+    {% csrf_token %}
+    <label for="csv"> Upload CSV file </label>
+      <input  type="file" required="True" name="csv" multiple> </input><br>
+
+      <div class="row-clearfix" style="padding-left: 3mm">
+        <div id="member-add" >
+        </div>
+      </div>
+
+      <br><br><br><br><br>
+      <button type="button" id="add-field" class="btn btn-primary m-t-15 waves-effect">Add a new CSV File</button>
+
+    <div style="text-align:center">
+      <input  type="submit" value="SUBMIT"> </input>
+    </div>
+    </form>
+
+</div>
+{% endblock %}
