@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Value, Sum, Max
 from django.db.models.functions import Concat
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 
@@ -476,29 +476,45 @@ def hello(request):
 @login_required
 def holds_waiting(request):
     if request.POST['type'] == 'waiting':
-        sql_query='''
-                SELECT
-                    TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
-                    borrowers.email, borrowers.cardnumber,
-                    items.barcode, biblio.title, reserves.reservedate
-                FROM reserves
-                LEFT JOIN borrowers USING (borrowernumber)
-                LEFT JOIN items USING (itemnumber)
-                LEFT JOIN biblio ON (reserves.biblionumber = biblio.biblionumber)
-                WHERE
-                    (reserves.itemnumber IS NOT NULL
-                    AND NOT EXISTS(SELECT issue_id FROM issues WHERE items.itemnumber = issues.itemnumber)
-                    )
-                    OR
-                    (reserves.itemnumber IS NULL
-                    AND EXISTS(
-                        SELECT itemnumber FROM items i2 WHERE i2.biblionumber=reserves.biblionumber
-                        AND NOT EXISTS(
-                            SELECT issue_id FROM issues iss WHERE iss.itemnumber=i2.itemnumber
-                            )
-                        )
-                    )
-                '''
+        # sql_query='''
+        #         SELECT
+        #             TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
+        #             borrowers.email, borrowers.cardnumber,
+        #             items.barcode, biblio.title, reserves.reservedate
+        #         FROM reserves
+        #         LEFT JOIN borrowers USING (borrowernumber)
+        #         LEFT JOIN items USING (itemnumber)
+        #         LEFT JOIN biblio ON (reserves.biblionumber = biblio.biblionumber)
+        #         WHERE
+        #             (reserves.itemnumber IS NOT NULL
+        #             AND NOT EXISTS(SELECT issue_id FROM issues WHERE items.itemnumber = issues.itemnumber)
+        #             )
+        #             OR
+        #             (reserves.itemnumber IS NULL
+        #             AND EXISTS(
+        #                 SELECT itemnumber FROM items i2 WHERE i2.biblionumber=reserves.biblionumber
+        #                 AND NOT EXISTS(
+        #                     SELECT issue_id FROM issues iss WHERE iss.itemnumber=i2.itemnumber
+        #                     )
+        #                 )
+        #             )
+        #         '''
+        report_type = 'Circulation Report - Holds Waiting'
+
+        # SQL Query provided by koha devel mailing list
+        sql_query = '''
+        SELECT TRIM(CONCAT(COALESCE(borrowers.firstname,""), " ",  COALESCE(borrowers.surname,"") ) ),
+        borrowers.email, borrowers.cardnumber,
+        IF(it1.barcode IS NOT NULL, it1.barcode, ""), biblio.title, reserves.reservedate
+         FROM reserves
+         LEFT JOIN borrowers USING (borrowernumber)
+         LEFT JOIN biblio USING (biblionumber)
+         LEFT JOIN items AS it1 USING (itemnumber)
+         LEFT JOIN issues AS iss1 USING (itemnumber)
+         LEFT JOIN items AS it2 ON (reserves.biblionumber = it2.biblionumber)
+         LEFT JOIN issues AS iss2 ON(it2.itemnumber = iss2.itemnumber)
+        WHERE iss1.date_due IS NULL AND iss2.date_due IS NULL'''
+
         headings = [
             'Patron Name',
             'Patron email',
@@ -541,6 +557,9 @@ def holds_waiting(request):
                 GROUP BY biblio.biblionumber, borrowers.borrowernumber, items.barcode, reserves.reservedate, issues.issue_id, reserves.priority
                 ORDER BY reservedate
                 '''
+
+        report_type = 'Circulation Report - Holds Queue'
+
         headings = [
             'Patron Name',
             'Patron email',
@@ -1438,6 +1457,8 @@ class VendorOrders(View):
                                       '//datafield[@tag="245"]/subfield[@code="b"]') ) AS book_title,
                                 biblio.author,
                                 biblioitems.publishercode,
+                                ba.basketno,
+                                ba.creationdate,
                                 o.orderstatus,
                                 borrowers.surname,
                                 format(o.listprice,2) AS 'list price',
@@ -1466,6 +1487,8 @@ class VendorOrders(View):
                 'Book Title',
                 'Author',
                 'Publisher',
+                'Basket Number',
+                'Creation Date',
                 'Order Status',
                 'Authorised By',
                 'List Price',
@@ -1582,7 +1605,7 @@ def suggested_books(request):
 
     return render(request, 'portal/circulation_reoprt.html', context)
 
-def overdue_orders(request):
+def overdue_orders_30(request):
     sql_query = '''
                 SELECT
                     concat( biblio.title, ' ', ExtractValue((
@@ -1731,30 +1754,14 @@ class RecentArrivals(View):
                     FROM biblio_metadata b2
                     WHERE biblio.biblionumber = b2.biblionumber),
                     '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
-                    biblioitems.publishercode,
+                    IF( biblioitems.publishercode IS NOT NULL, biblioitems.publishercode, ""),
                     serial.subscriptionid,
                     serial.biblionumber,
                     serial.serialid,
                     serial.serialseq,
                     serial.planneddate,
-                    serial.publisheddate,
-                    IF
-                        (   LOCATE('<datafield tag="310"', biblio_metadata.metadata) = 0
-                                OR
-                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) = 0
-                                OR
-                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata))
-                                > LOCATE('</datafield>', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)),
-                        '',
-                        SUBSTRING( biblio_metadata.metadata,
-                            LOCATE('<subfield code="a">', biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19,
-                            LOCATE('</subfield>', biblio_metadata.metadata, LOCATE('<subfield code="a">', biblio_metadata.metadata,
-                                LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19)
-                                -
-                            (LOCATE('<subfield code="a">',biblio_metadata.metadata, LOCATE('<datafield tag="310"', biblio_metadata.metadata)) + 19)
-                            )
-                        )
-                    AS FREQUENCY
+                    IF(serial.publisheddate IS NOT NULL, serial.publisheddate, ""),
+                    ExtractValue(biblio_metadata.metadata, '//datafield[@tag="310"]/subfield[@code="a"]') AS FREQUENCY
                     FROM serial, biblio_metadata, biblio
                     LEFT JOIN biblioitems USING (biblionumber)
                     WHERE serial.biblionumber = biblio.biblionumber AND serial.biblionumber=biblio_metadata.biblionumber  AND (STATUS)=2
@@ -1762,6 +1769,9 @@ class RecentArrivals(View):
                     ORDER BY serial.subscriptionid ASC
                 '''.format(from_date=from_date, to_date=to_date)
 
+            # Extracting frequency credit - koha-devel mailing list
+
+            print(sql_query)
             headings = [
                 'Title',
                 'Publisher',
@@ -1821,6 +1831,7 @@ class BarcodeCSV(View):
             # Split along new line
             file_barcodes = re.split('\n', data.decode('utf-8'))
 
+            #Remove carriage return from the barcodes
             barcodes += [barcode.replace('\r','') for barcode in file_barcodes]
             #
             # for index,barcode in enumerate(file_barcodes):
@@ -1836,6 +1847,9 @@ class BarcodeCSV(View):
             #             incorrect_count += 1
             #     else:
             #         continue
+
+        # Remove duplicate entries
+        barcodes = list(set(barcodes))
         sql_query = '''
                     SELECT barcode,
                     concat( b.title, ' ', ExtractValue((
@@ -1843,11 +1857,14 @@ class BarcodeCSV(View):
                         FROM biblio_metadata b2
                         WHERE b.biblionumber = b2.biblionumber),
                           '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
-                    author, itype, "Available"
+                    author, itype,
+                    IF(location IS NOT NULL, location, ""),
+                    IF(v.lib IS NOT NULL, v.lib, ""), "Available"
                     FROM items
                     LEFT JOIN biblio b USING (biblionumber)
+                    LEFT JOIN authorised_values v ON (items.itemlost=v.authorised_value AND v.category = 'LOST')
                     WHERE barcode IN {barcodes}
-                    AND itype in ('C', 'DIVB', 'R', 'SPR', 'STB', 'STD')
+                    AND itype IN ('C', 'DIVB', 'R', 'SPR', 'STB')
 
                     UNION ALL
 
@@ -1857,19 +1874,26 @@ class BarcodeCSV(View):
                         FROM biblio_metadata b2
                         WHERE b.biblionumber = b2.biblionumber),
                           '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
-                    author, itype, "Unavailable"
+                    author, itype,
+                    IF(location IS NOT NULL, location, ""),
+                    IF(v.lib IS NOT NULL, v.lib, ""), "Unavailable"
                     FROM items
                     LEFT JOIN biblio b USING (biblionumber)
+                    LEFT JOIN authorised_values v ON (items.itemlost=v.authorised_value AND v.category = 'LOST')
                     WHERE barcode NOT IN {barcodes}
-                    AND itype in ('C', 'DIVB', 'R', 'SPR', 'STB', 'STD')
+                    AND itype IN ('C', 'DIVB', 'R', 'SPR', 'STB')
                     '''.format(barcodes = tuple(barcodes))
 
         correct_count = 0
         incorrect_count = 0
         values = []
-        query_results = execute_query(sql_query)
+        try:
+            query_results = execute_query(sql_query)
+        except:
+            messages.warning(request, "Please check the format of csv files uploaded. They should contain only 1 column with barcodes.")
+            return redirect('portal:barcode_csv')
         if not query_results:
-            print("ERROR")
+            return JsonResponse({"message": "Sorry, error in SQL query"})
 
         for row in query_results:
             if row[-1] == 'Available':
@@ -1877,7 +1901,6 @@ class BarcodeCSV(View):
             else:
                 incorrect_count +=1
             values.append(row)
-
 
         context = {
             'values': values,
@@ -1887,8 +1910,17 @@ class BarcodeCSV(View):
         }
         return render(request, 'portal/barcode_report.html', context=context)
 
+def user_record(request):
+    pass
+
+
 def handler404(request, exception):
     '''
     Custom 404 Error Page template
     '''
-    return render(request, 'portal/404.html', status=404)
+    try:
+        url = request.META['HTTP_REFERER']
+    except:
+        url = request.build_absolute_uri(reverse('portal:report_types'))
+    print(url)
+    return render(request, 'portal/404.html', status=404, context={'url':url})

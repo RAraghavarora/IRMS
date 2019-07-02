@@ -47,7 +47,7 @@
         </small>
       </h3>
       <a href="{% url 'portal:report_types' %}" class="btn btn-info" role="button">Go To Reports Home</a>
-      <input value="Export as CSV 2" type="button" onclick="$('#StatusTable').table2CSV({header:['Barcode','Title','Author', 'Type', 'Status']})">
+      <input value="Export as CSV 2" type="button" onclick="$('#StatusTable').table2CSV({header:['Barcode','Title','Author', 'Type', 'Location', 'Lost Status','Status']})">
 
       <form name="FilterForm" id="FilterForm" action="" method="">
           <input type="checkbox" name="filterStatus" value="Invalid" />
@@ -65,7 +65,9 @@
                               <th>Barcode</th>
                               <th>Book Name </th>
                               <th> Author </th>
-                              <th> Item Type
+                              <th> Item Type </th>
+                              <th> Location </th>
+                              <th> Item Lost Status </th>
                               <th> Status </th>
                           </tr>
                         </thead>
