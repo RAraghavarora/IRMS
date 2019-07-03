@@ -1,0 +1,58 @@
+{% extends 'portal/base.html' %}
+{% block content %}
+
+<div class="card">
+    <div class="header" >
+        <h1>IRMS | IGCAR </h1>
+        <div class="error" style="background-color:#DB3B21">
+            {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+              </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+      </br></br>
+        <h2>
+            Generate Admin User Records
+        </h2>
+    </div>
+
+
+    <form method="POST" action="{% url 'portal:user_records' %}">
+    {% csrf_token %}
+    <div class="body">
+    {% csrf_token %}
+        <div class="table-responsive">
+
+          <select name="module" required>
+            <option disabled="disabled" selected="true"> Choose the module </option>
+            {% for module in modules %}
+            <option value={{module}}>{{module}}</option>
+            {% endfor %}
+          </select> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          <select name="patron" required>
+            <option disabled="disabled" selected="true"> Choose the patron </option>
+            {% for patron in patrons %}
+            <option value={{patron.borrowernumber}}>{{patron.full_name}}</option>
+            {% endfor %}
+          </select><br><br>
+          <input type="date" name="from_date" required="True">From date </input>
+          <span style="padding-left: 50px">
+            <input type="date" name="to_date" required="True">To date </input><br>
+          </span>
+            <div style="text-align:center">
+              <button type="submit" class="btn btn-primary m-t-15 waves-effect">Submit</button>
+            </div>
+    </form>
+
+
+    </div>
+</div>
+
+{% endblock %}

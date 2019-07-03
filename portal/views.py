@@ -65,8 +65,7 @@ def execute_query(sql_query):
         return cur.fetchall()
     except MySQLdb.Error as e:
         print(e)
-        return None
-        return JsonResponse({"message":"Unable to fetch data"})
+        return 'Error'
 
 class Login(View):
     '''Login the patron based on his userid and Bcrypt hashed password ? '''
@@ -637,6 +636,7 @@ class VendorAutocomplete(autocomplete.Select2QuerySetView):
             return vendors_list
 
         return vendors
+
 
 def abc(request):
     return None
@@ -1859,7 +1859,7 @@ class BarcodeCSV(View):
                           '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
                     author, itype,
                     IF(location IS NOT NULL, location, ""),
-                    IF(v.lib IS NOT NULL, v.lib, ""), "Available"
+                    IF(v.lib IS NOT NULL, v.lib, ""),items.itemcallnumber, "Available"
                     FROM items
                     LEFT JOIN biblio b USING (biblionumber)
                     LEFT JOIN authorised_values v ON (items.itemlost=v.authorised_value AND v.category = 'LOST')
@@ -1876,7 +1876,7 @@ class BarcodeCSV(View):
                           '//datafield[@tag="245"]/subfield[@code="b"]') ) AS title,
                     author, itype,
                     IF(location IS NOT NULL, location, ""),
-                    IF(v.lib IS NOT NULL, v.lib, ""), "Unavailable"
+                    IF(v.lib IS NOT NULL, v.lib, ""),items.itemcallnumber, "Unavailable"
                     FROM items
                     LEFT JOIN biblio b USING (biblionumber)
                     LEFT JOIN authorised_values v ON (items.itemlost=v.authorised_value AND v.category = 'LOST')
@@ -1892,7 +1892,7 @@ class BarcodeCSV(View):
         except:
             messages.warning(request, "Please check the format of csv files uploaded. They should contain only 1 column with barcodes.")
             return redirect('portal:barcode_csv')
-        if not query_results:
+        if query_results == 'Error':
             return JsonResponse({"message": "Sorry, error in SQL query"})
 
         for row in query_results:
@@ -1910,9 +1910,199 @@ class BarcodeCSV(View):
         }
         return render(request, 'portal/barcode_report.html', context=context)
 
-def user_record(request):
-    pass
+class AdminUserRecords(View):
+    '''
+    Reference: https://wiki.koha-community.org/wiki/SQL_Reports_Library#action_logs
+    '''
 
+    def get(self,request):
+        modules = [
+            'CATALOGUING',
+            'CIRCULATION',
+            'FINES',
+            'MEMBERS',
+            'SERIAL',
+        ]
+        patron_numbers = ActionLogs.objects.values('user').distinct()
+        patrons = []
+        for borrower_dict in patron_numbers:
+            borrowernumber = borrower_dict['user']
+            if Borrowers.objects.filter(borrowernumber = borrowernumber).exists():
+                patrons.append(Borrowers.objects.get(borrowernumber = borrowernumber))
+            else:
+                continue
+        print(len(patrons))
+        patrons.sort(key=lambda x: x.full_name.upper())
+        print(len(patrons))
+
+        return render(request, 'portal/admin_user_records.html', context={'modules': modules, 'patrons': patrons})
+
+    def post(self, request):
+        try:
+            module = request.POST['module']
+            from_date = request.POST['from_date']
+            to_date = request.POST['to_date']
+            borrowernumber = request.POST['patron']
+        except:
+            return JsonResponse({'message': 'Invalid Request'})
+
+        if module == 'FINES':
+            sql_query = '''
+                SELECT
+                    TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
+                    action_logs.timestamp, action,
+                    TRIM(CONCAT(COALESCE(b2.firstname,""), " ",  COALESCE(b2.surname,"") ) ),
+                    info, interface
+                    FROM action_logs
+                    LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
+                    LEFT JOIN borrowers b2 ON (action_logs.object = b2.borrowernumber)
+                    '''
+            headings = [
+                'Patron Name',
+                'Time',
+                'Action',
+                'Borrower',
+                'Info',
+                'Interface'
+            ]
+
+        elif module == 'CIRCULATION':
+             sql_query = '''
+                 SELECT
+                     TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
+                     action_logs.timestamp, action,
+                     TRIM(CONCAT(COALESCE(b2.firstname,""), " ",  COALESCE(b2.surname,""), " - (", b2.sort1, ")" ) ),
+                     concat( biblio.title, ' ', ExtractValue((
+                         SELECT metadata
+                         FROM biblio_metadata b2
+                         WHERE biblio.biblionumber = b2.biblionumber),
+                           '//datafield[@tag="245"]/subfield[@code="b"]'), ' - (', items.barcode, ")" ),
+                     interface
+                     FROM action_logs
+                     LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
+                     LEFT JOIN borrowers b2 ON (action_logs.object = b2.borrowernumber)
+                     LEFT JOIN items ON (action_logs.info = items.itemnumber)
+                     LEFT JOIN biblio USING (biblionumber)
+                     '''
+             headings = [
+                 'Patron Name',
+                 'Time',
+                 'Action',
+                 'Borrower',
+                 'Item',
+                 'Interface'
+             ]
+
+        elif module == 'MEMBERS':
+             sql_query = '''
+                 SELECT
+                     TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
+                     action_logs.timestamp, action,
+                     TRIM(CONCAT(COALESCE(b2.firstname,""), " ",  COALESCE(b2.surname,"") ) ),
+                     info, interface
+                     FROM action_logs
+                     LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
+                     LEFT JOIN borrowers b2 ON (action_logs.object = b2.borrowernumber)
+                     '''
+             headings = [
+                 'Patron Name',
+                 'Time',
+                 'Action',
+                 'Borrower',
+                 'Info',
+                 'Interface'
+             ]
+
+        elif module == 'SERIAL':
+            sql_query = '''
+                SELECT
+                    TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
+                    action_logs.timestamp, action,
+                    object,interface
+                    FROM action_logs
+                    LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
+                    '''
+            headings = [
+                'Patron Name',
+                'Time',
+                'Action',
+                'Subscription ID',
+                'Interface'
+            ]
+
+        elif module == 'CATALOGUING':
+            sql_query = '''
+                SELECT
+                    TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
+                    action_logs.timestamp, action,interface,object,info,
+                    IF(bib.title IS NOT NULL, bib.title, db.title)
+                    FROM action_logs
+                    LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
+                    LEFT JOIN items it ON (info LIKE 'item%' AND object = it.itemnumber )
+                    LEFT JOIN deleteditems di
+                        ON (it.itemnumber IS NULL AND info LIKE 'item%' AND object=di.itemnumber)
+                    LEFT JOIN biblio bib
+                        ON (info LIKE 'biblio%' AND bib.biblionumber=object)
+                            OR (bib.biblionumber=it.biblionumber)
+                                OR (bib.biblionumber=di.biblionumber)
+                    LEFT JOIN deletedbiblio db
+                        ON (info LIKE 'biblio%' AND bib.biblionumber=object)
+                            OR (bib.biblionumber=it.biblionumber)
+                                OR (bib.biblionumber=di.biblionumber)
+
+                    '''
+            headings = [
+                'Patron Name',
+                'Time',
+                'Action',
+                'Object',
+                'Info',
+                'Interface'
+            ]
+
+        sql_query += f'''
+            WHERE module='{module}'
+                AND Date(action_logs.timestamp) BETWEEN '{from_date}' AND '{to_date}'
+                AND user={borrowernumber}
+            ORDER BY action_logs.timestamp DESC
+            '''
+
+        print(sql_query)
+        query_results = execute_query(sql_query)
+        print('yes')
+        if query_results == 'Error':
+            return JsonResponse({"message": "Sorry, error in SQL query"})
+        count = 0
+        values = []
+        for row in query_results:
+            row = list(row)
+            # if row[-1].startswith('item'):
+            #     print(row[-1])
+            #     try:
+            #         item = Items.objects.get(itemnumber=row[-2])
+            #         title = item.full_title
+            #         row[-2] = title + ' - ' + item.barcode
+            #     except:
+            #         row[-2] = 'Item with itemnumber {} does not exist'.format(row[-2])
+            # elif row[-1].startswith('biblio'):
+            #     try:
+            #         biblio = Biblio.objects.get(biblionumber=row[-2])
+            #         row[-2] = biblio.full_title
+            #     except:
+            #         row[-2] = 'Biblio with biblionumber {} does not exist'.format(row[-2])
+
+            values.append(row)
+            count += 1
+
+
+        context = {
+        'headings': headings,
+        'values': values,
+        'count': count,
+        'report_type': 'User Records',
+        'url' : request.META['HTTP_REFERER']
+        }
+        return render(request, 'portal/circulation_reoprt.html', context)
 
 def handler404(request, exception):
     '''

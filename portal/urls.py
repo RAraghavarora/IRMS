@@ -38,6 +38,8 @@ urlpatterns = [
 
     path('report_types/recent_arrivals', views.RecentArrivals.as_view(), name='recent_arrivals'),
     path('report_types/barcode_csv', views.BarcodeCSV.as_view(), name='barcode_csv'),
+    path('report_types/user_records/',views.AdminUserRecords.as_view(), name='user_records'),
+
 
     path('abc/',views.abc, name='abc'),
 
