@@ -10,6 +10,7 @@ mysql==0.0.2
 mysql-connector==2.2.9
 mysqlclient==1.4.2.post1
 pycparser==2.19
+pyperclip==1.7.0
 pytz==2019.1
 six==1.12.0
 sqlparse==0.3.0

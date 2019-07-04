@@ -1,9 +1,9 @@
 window.onload = function(){
     parameters=document.getElementById('member-add');
     var addField=document.getElementById('addField');
-    if(document.getElementById('add-field'))
+    if(document.getElementById('add-files'))
     {
-      document.getElementById('add-field').addEventListener("click", function()
+      document.getElementById('add-files').addEventListener("click", function()
       {
           // Create the input fields
           var csv = document.createElement('input');

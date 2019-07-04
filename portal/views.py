@@ -104,6 +104,9 @@ class Login(View):
             else:
                 return redirect('portal:profile')
         else:
+            messages.warning(request, 'Invalid Credentials')
+            print(request.META.get('HTTP_REFERER'))
+            return redirect(request.META.get('HTTP_REFERER'))
             return JsonResponse({'message':'The credentials are wrong'})
 
 def logout_view(request):
@@ -2034,7 +2037,7 @@ class AdminUserRecords(View):
             sql_query = '''
                 SELECT
                     TRIM(CONCAT(COALESCE(b.firstname,""), " ",  COALESCE(b.surname,"") ) ) AS patron_name,
-                    action_logs.timestamp, action,interface,object,info,
+                    action_logs.timestamp, action,object,info,interface,
                     IF(bib.title IS NOT NULL, bib.title, db.title)
                     FROM action_logs
                     LEFT JOIN borrowers b ON (action_logs.user = b.borrowernumber)
@@ -2043,12 +2046,12 @@ class AdminUserRecords(View):
                         ON (it.itemnumber IS NULL AND info LIKE 'item%' AND object=di.itemnumber)
                     LEFT JOIN biblio bib
                         ON (info LIKE 'biblio%' AND bib.biblionumber=object)
-                            OR (bib.biblionumber=it.biblionumber)
-                                OR (bib.biblionumber=di.biblionumber)
+                            OR (info NOT LIKE 'biblio%' AND bib.biblionumber=it.biblionumber)
+                                OR (info NOT LIKE 'biblio%' AND bib.biblionumber=di.biblionumber)
                     LEFT JOIN deletedbiblio db
-                        ON (info LIKE 'biblio%' AND bib.biblionumber=object)
-                            OR (bib.biblionumber=it.biblionumber)
-                                OR (bib.biblionumber=di.biblionumber)
+                        ON (info LIKE 'biblio%' AND db.biblionumber=object)
+                            OR (info NOT LIKE 'biblio%' AND db.biblionumber=it.biblionumber)
+                                OR (info NOT LIKE 'biblio%' AND db.biblionumber=di.biblionumber)
 
                     '''
             headings = [
@@ -2057,7 +2060,8 @@ class AdminUserRecords(View):
                 'Action',
                 'Object',
                 'Info',
-                'Interface'
+                'Interface',
+                'Title'
             ]
 
         sql_query += f'''

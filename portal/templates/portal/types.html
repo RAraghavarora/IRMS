@@ -20,7 +20,7 @@
       <title> IRMS - IGCAR</title>
   </head>
 
-  <body>
+  <body style="padding-left: 30px">
       <h1> IRMS - Integrated Reports Management System - IGCAR </h1>
 
 <br>
@@ -48,7 +48,13 @@
                             <td> Admin Records </td>
                             <td> <a href="{% url 'portal:user_records' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
+                        </tbody>
+                    </table>
 
+                    <h3 style="color: #00B0E4; font-size: 18px"> Circulation Reports: </h3>
+                    <table class="table table-bordered js-exportable" id='example'>
+
+                      <tbody>
                           <tr>
                             <td width="50%"> Checked out books </td>
                             <td><a href="{% url 'portal:checked_out' %}" class="btn btn-link" role="button">Click Here</a> </td>
@@ -84,14 +90,17 @@
                              </td>
                           </tr>
                         </form>
+                      </tbody>
+                    </table>
+                    <h3 style="color: #00B0E4; font-size: 18px"> Acquisition Reports: </h3>
+                    <table class="table table-bordered js-exportable" id='example'>
+
+                      <tbody>
+
+
 
                           <tr>
-                            <td> Fines </td>
-                            <td> <a href="{% url 'portal:fine_report' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                          </tr>
-
-                          <tr>
-                            <td> Vendor-wise Orders </td>
+                            <td width="50%"> Vendor-wise Orders </td>
                             <td> <a href="{% url 'portal:vendor_orders' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
 
@@ -109,20 +118,48 @@
                             <td> Invoice Register </td>
                             <td> <a href="{% url 'portal:invoice_register' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
+                        </tbody>
+                      </table>
+                      <h3 style="color: #00B0E4; font-size: 18px"> Patron Reports: </h3>
+                      <table class="table table-bordered js-exportable" id='example'>
+
+                        <tbody>
 
                           <tr>
-                            <td> Serial Report - Recent Arrivals </td>
+                            <td> Fines </td>
+                            <td> <a href="{% url 'portal:fine_report' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                          </tr>
+                          <tr>
+                            <td width="50%"> Generate Fine Summary Report </td>
+                            <td width="20%"> <a href="{% url 'portal:fine_report_summary' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                            <td><a role="button" class="btn btn-danger" href="{% url 'portal:fine_summary_archive' %}" >Fine Summary Archive</a>
+                            </tr>
+                          </tbody>
+                        </table>
+                          <h3 style="color: #00B0E4; font-size: 18px"> Serial Reports: </h3>
+                          <table class="table table-bordered js-exportable" id='example'>
+
+                            <tbody>
+
+                          <tr>
+                            <td width="50%"> Serial Report - Recent Arrivals </td>
                             <td> <a href="{% url 'portal:recent_arrivals' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
+                      </tbody>
+                    </table>
 
+                        <h3 style="color: #00B0E4; font-size: 18px"> Custom Reports: </h3>
+                        <table class="table table-bordered js-exportable" id='example'>
+
+                          <tbody>
                           <tr>
                             <td> Generate Barcode Report </td>
                             <td> <a href="{% url 'portal:barcode_csv' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
 
                           <tr>
-                            <td> Generate No Due Certificate - For Members </td>
-                            <td> <a href="{% url 'portal:no_due' %}" class="btn btn-link" role="button">Click Here</a> </td>
+                            <td width="50%"> Generate No Due Certificate - For Members </td>
+                            <td width="20%"> <a href="{% url 'portal:no_due' %}" class="btn btn-link" role="button">Click Here</a> </td>
                             <td rowspan="2"><br> <a style="height: 40px;"role="button" class="btn btn-danger" href="{% url 'portal:ndc_archive' %}" >NDC Archive</a><br><br>
                           </tr>
 
@@ -131,11 +168,7 @@
                             <td> <a href="{% url 'portal:no_due_non_members' %}" class="btn btn-link" role="button">Click Here</a> </td>
                           </tr>
 
-                          <tr>
-                            <td> Generate Fine Summary Report </td>
-                            <td> <a href="{% url 'portal:fine_report_summary' %}" class="btn btn-link" role="button">Click Here</a> </td>
-                            <td><a role="button" class="btn btn-danger" href="{% url 'portal:fine_summary_archive' %}" >Fine Summary Archive</a>
-                          </tr>
+
 
                         </tbody>
 

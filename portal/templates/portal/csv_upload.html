@@ -1,6 +1,6 @@
 {% extends 'portal/base.html' %}
 {% block content %}
-
+{% load static %}
 <div class="card">
     <div class="header" >
         <h1>IRMS | IGCAR </h1>
@@ -33,7 +33,7 @@
       </div>
 
       <br><br><br><br><br>
-      <button type="button" id="add-field" class="btn btn-primary m-t-15 waves-effect">Add a new CSV File</button>
+      <button type="button" id="add-files" class="btn btn-primary m-t-15 waves-effect">Add a new CSV File</button>
 
     <div style="text-align:center">
       <input  type="submit" value="SUBMIT"> </input>
@@ -41,4 +41,5 @@
     </form>
 
 </div>
+
 {% endblock %}
