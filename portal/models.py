@@ -2022,7 +2022,7 @@ class ImportRecords(models.Model):
 class Issues(models.Model):
     issue_id = models.AutoField(primary_key=True)
     borrowernumber = models.ForeignKey(Borrowers, models.DO_NOTHING, db_column='borrowernumber', blank=True, null=True)
-    itemnumber = models.OneToOneField('Items', models.DO_NOTHING, related_name='issues_set', db_column='itemnumber', unique=True, blank=True, null=True)
+    itemnumber = models.OneToOneField('Items', models.DO_NOTHING, related_name='issue', db_column='itemnumber', unique=True, blank=True, null=True)
     date_due = models.DateTimeField(blank=True, null=True)
     branchcode = models.CharField(max_length=10, blank=True, null=True)
     returndate = models.DateTimeField(blank=True, null=True)
