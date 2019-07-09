@@ -2108,6 +2108,131 @@ class AdminUserRecords(View):
         }
         return render(request, 'portal/circulation_reoprt.html', context)
 
+def calculate_population_stats():
+    '''
+    Helper function to calculate population mean and variance for DSS
+    '''
+    issues = []
+    item_count=[0]
+    issue_count = [0]
+    data = []
+    counter = 0
+
+    biblio_list = Biblio.objects.all()
+
+    for biblio in biblio_list:
+        items = biblio.items_set.all() # All the items of the biblio
+        book_issues = [] # To store the number of issues of each item of the biblio
+        book_item_count = [0] # Total number of items with the appropriate itemtype for the biblio
+        for item in items:
+            yearwise_issues = [0]*5
+            # List of all yearwise issues of a book
+            if item.itype in ('R', 'SPR', 'STB', 'DIVB', 'C'):
+                book_item_count[0]+=1
+                item_count[0]+=1
+                issue = [0]
+                try:
+                    iss = item.issue
+                    # Find the index number for yearwise_issues from the last digit of issuedate.year If year is 2018, index=8-4 = 4
+                    index = iss.issuedate.year%10 - 4
+                    if index in range(0,5):
+                        yearwise_issues[index]+=1
+                    if iss.issuedate.year in (2014,2015,2016,2017,2018):
+                        issue[0]+=1
+                except IndexError:
+                    print(index)
+                    raise Exception('Invalid Index debug')
+                except Items.issue.RelatedObjectDoesNotExist:
+                    # No issue exists
+                    pass
+                for old_issue in item.oldissues_set.all():
+                    index = old_issue.issuedate.year%10 - 4
+                    if index in range(0,5):
+                        yearwise_issues[index]+=1
+                data += yearwise_issues
+                issue_count[0] += issue[0]
+                book_issues.append(issue[0])
+            else:
+                continue
+        issues.append(book_issues)
+        print(counter)
+        counter+=1
+
+    import statistics
+    from math import sqrt
+
+    N = len(data)
+
+    stdev = sigma/sqrt(N)
+    population_stats = {
+        'population_mean': statistics.mean(data),
+        'variance': statistics.variance(data),
+        'sigma': statistics.stdev(data),
+        'stdev': statistics.stdev(data)/(sqrt(N))
+    }
+    return population_stats
+
+
+class DSS(View):
+    def get(self, request):
+        form = ReservesForm()
+        return render(request, 'portal/dss_input.html', {'form': form})
+
+    def post(self, request):
+        data = request.POST
+        itemnumber = data['itemnumber']
+        if not itemnumber:
+            return JsonResponse({"message": 'Invalid Request'})
+        biblio = Items.objects.get(itemnumber=itemnumber).biblionumber
+        items = biblio.items_set.all() # All the items of the biblio
+        item_count = 0
+        book_issues=[]
+        for item in items:
+            if item.itype in ('R', 'SPR', 'STB', 'DIVB', 'C'):
+                issue=[0]
+                item_count+=1
+                try:
+                    iss = item.issue
+                    if iss.issuedate.year in (2014,2015,2016,2017,2018):
+                        issue[0]+=1
+                except Items.issue.RelatedObjectDoesNotExist:
+                    # No issue exists
+                    pass
+            for old_issue in item.oldissues_set.all():
+                if old_issue.issuedate.year in (2014,2015,2016,2017,2018):
+                    issue[0]+=1
+            book_issues.append(issue[0])
+        if item_count > 0:
+            sample_mean = sum(book_issues) / (item_count*5)
+        else:
+            messages.info(request, 'No circulation book')
+
+        # To get new values of population stats, use the helper function calculate_population_stats()
+        # Change the years from 2014 to 2018 in the function to accomodate more data
+
+        population_mean = 0.09937969311132876 # based on record generated on 8/07/2019
+        variance = 0.20907310223569503
+        sigma = 0.45724512270301476
+        stdev = 0.0008261817232007021
+
+        z_calc = (sample_mean - population_mean)/(stdev)
+
+        if z_calc > 1.96:
+            message = f'''Based on 95% confidence interval, new copies of the book need to be ordered'''
+        else:
+            message = f'''Based on 95% confidence interval, This book is not much used and new books need not be ordered.'''
+
+        context = {
+            'biblio': biblio,
+            'item_count': item_count,
+            'z_calc': z_calc,
+            'message': message
+        }
+
+        return render(request, 'portal/dss.html', context)
+
+
+
 def handler404(request, exception):
     '''
     Custom 404 Error Page template
