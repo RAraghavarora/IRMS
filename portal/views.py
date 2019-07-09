@@ -28,6 +28,7 @@ from portal.models import *
 from portal.forms import ReservesForm, AqBasketForm
 from portal.apps import *
 
+from IRMS import keyconfig
 
 text = "hello world"
 text = text.encode()
@@ -55,7 +56,7 @@ def execute_query(sql_query):
     db = MySQLdb.connect(
         host="localhost",
         user="root",
-        passwd="igcarlibrary",
+        passwd=keyconfig.password,
         db="library"
     )
     cur = db.cursor()
@@ -275,10 +276,6 @@ class GenerateReport(APIView):
 
         return render(request, 'portal/generate_report.html', context)
 
-
-def demo(request):
-    return JsonResponse(request.session['saved'])
-
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
     length=32,
@@ -468,13 +465,6 @@ class Search(View):
         print(resp)
         return HttpResponse(resp, content_type='application/json')
 
-def hello(request):
-    items = Items.objects.filter(itype='C', biblionumber__title__icontains='sql')
-    data = [item.biblionumber for item in items]
-    data = serializers.serialize('json', data)
-    print(data)
-    return HttpResponse(data, content_type='application/json')
-
 @login_required
 def holds_waiting(request):
     if request.POST['type'] == 'waiting':
@@ -640,10 +630,6 @@ class VendorAutocomplete(autocomplete.Select2QuerySetView):
 
         return vendors
 
-
-def abc(request):
-    return None
-
 @login_required
 def book_detail(request):
     '''
@@ -701,6 +687,7 @@ def home(request):
 
 class NoDue(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         '''
         Input the IC number of members.
@@ -710,6 +697,7 @@ class NoDue(View):
         context = {'addressee_list':addressee_list}
         return render(request, 'portal/no_due_input.html', context=context)
 
+    @method_decorator(login_required)
     def post(self, request):
         '''
         Get the IC numbers and generate corresponding No-Due Certificate
@@ -868,6 +856,7 @@ class NoDue(View):
 
         return render(request, 'portal/no_due.html', context)
 
+@login_required
 def no_due_save(request):
     '''
     View to save the information of No Due CERTIFICATE
@@ -947,12 +936,14 @@ class NoDueNonMembers(View):
     Generate No Due Certificate for people who do not exist in the library database
     '''
 
+    @method_decorator(login_required)
     def get(self, request):
         # Get all the addressee
         addressee_list = Addressee.objects.all()
         context = {'addressee_list':addressee_list}
         return render(request, 'portal/non_members_input.html', context=context)
 
+    @method_decorator(login_required)
     def post(self,request):
         try:
             data = request.POST
@@ -1024,6 +1015,7 @@ class NoDueNonMembers(View):
             messages.warning(request, 'Please enter all details')
             return redirect('portal:no_due_non_members')
 
+@login_required
 def non_member_save(request):
     '''
     View to save the information of No Due CERTIFICATE - Non members
@@ -1108,6 +1100,7 @@ def non_member_save(request):
 
 class NDCArchive(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         ndc_report_numbers = NoDueCertificate.objects.all().order_by('-report_number').values('full_ref').distinct()
         full_ref_list = [rn['full_ref'] for rn in ndc_report_numbers]
@@ -1115,6 +1108,7 @@ class NDCArchive(View):
         ndcs = zip(full_ref_list, dates)
         return render(request, 'portal/ndc_archive.html', {'ndcs':ndcs})
 
+    @method_decorator(login_required)
     def post(self, request):
         data = request.POST
         try:
@@ -1139,6 +1133,7 @@ class NDCArchive(View):
 
 class FineReportsSummary(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         # Get all the addressee
         addressee_list = Addressee.objects.all()
@@ -1156,6 +1151,7 @@ class FineReportsSummary(View):
         ]
         return render(request, 'portal/fine_input.html', {"addressee_list": addressee_list, 'units':units})
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             data = request.POST
@@ -1263,6 +1259,7 @@ class FineReportsSummary(View):
             print(e)
             return JsonResponse({"message": "Error in sql query"})
 
+@login_required
 def fine_report_summary_save(request):
     # Extract data saved in django sessions
     data = request.session['saved']
@@ -1336,10 +1333,12 @@ def fine_report_summary_save(request):
     return render(request, 'portal/fine_report_final.html', context=context)
 
 class FineSummaryArchive(View):
+    @method_decorator(login_required)
     def get(self, request):
         fine_summary_reports = FineReportSummary.objects.all().order_by('-report_number')
         return render(request, 'portal/fine_archive_input.html', context = {'fine_summary_reports': fine_summary_reports})
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             data = request.POST
@@ -1354,6 +1353,7 @@ class FineSummaryArchive(View):
 
 class FineReport(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         # Get all the addressee
         addressee_list = Addressee.objects.all()
@@ -1371,6 +1371,7 @@ class FineReport(View):
         ]
         return render(request, 'portal/fine_report_input.html', {"addressee_list": addressee_list, 'units':units})
 
+    @method_decorator(login_required)
     def post(self, request):
         data = request.POST
         from_date = data['from_date']
@@ -1441,10 +1442,12 @@ class FineReport(View):
 
 class VendorOrders(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         form = AqBasketForm()
         return render(request, 'portal/vendor_orders.html', {'form':form})
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             data = request.POST
@@ -1514,6 +1517,7 @@ class VendorOrders(View):
         except KeyError:
             return JsonResponse({'message': 'Invalid Request'})
 
+@login_required
 def overdue_orders(request):
 
     sql_query = '''
@@ -1571,6 +1575,7 @@ def overdue_orders(request):
 
     return render(request, 'portal/circulation_reoprt.html', context=context)
 
+@login_required
 def suggested_books(request):
     sql_query = '''
                 SELECT r.title 'Title',r.author 'Author', r.publishercode 'Publisher',r.copyrightdate 'Year', r.STATUS,
@@ -1608,6 +1613,7 @@ def suggested_books(request):
 
     return render(request, 'portal/circulation_reoprt.html', context)
 
+@login_required
 def overdue_orders_30(request):
     sql_query = '''
                 SELECT
@@ -1669,11 +1675,13 @@ def overdue_orders_30(request):
     return render(request, 'portal/circulation_reoprt.html', context)
 
 class InvoiceRegister(View):
+    @method_decorator(login_required)
     def get(self, request):
         form = AqBasketForm()
         return render(request, 'portal/invoice_register.html', {'form':form})
 
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             data = request.POST
@@ -1741,9 +1749,11 @@ class InvoiceRegister(View):
 #####################################   SERIAL REPORTS        ##########################
 class RecentArrivals(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         return render(request, 'portal/recent_arrivals.html')
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             data = request.POST
@@ -1805,9 +1815,11 @@ class RecentArrivals(View):
 
 class BarcodeCSV(View):
 
+    @method_decorator(login_required)
     def get(self, request):
         return render(request, 'portal/csv_upload.html')
 
+    @method_decorator(login_required)
     def post(self, request):
         if not request.FILES['csv']:
             messages.warning(request,'No file uploaded')
@@ -1918,6 +1930,7 @@ class AdminUserRecords(View):
     Reference: https://wiki.koha-community.org/wiki/SQL_Reports_Library#action_logs
     '''
 
+    @method_decorator(login_required)
     def get(self,request):
         modules = [
             'CATALOGUING',
@@ -1940,6 +1953,7 @@ class AdminUserRecords(View):
 
         return render(request, 'portal/admin_user_records.html', context={'modules': modules, 'patrons': patrons})
 
+    @method_decorator(login_required)
     def post(self, request):
         try:
             module = request.POST['module']

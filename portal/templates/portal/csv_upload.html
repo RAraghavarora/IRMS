@@ -24,7 +24,7 @@
 
     <form method="POST" action="{% url 'portal:barcode_csv' %}" enctype="multipart/form-data" style="padding-left: 56px">
     {% csrf_token %}
-    <label for="csv"> Upload CSV file </label>
+    <label for="csv"> Upload CSV files (You can select multiple files) </label>
       <input  type="file" required="True" name="csv" multiple> </input><br>
 
       <div class="row-clearfix" style="padding-left: 3mm">
@@ -33,7 +33,7 @@
       </div>
 
       <br><br><br><br><br>
-      <button type="button" id="add-files" class="btn btn-primary m-t-15 waves-effect">Add a new CSV File</button>
+      <button type="button" id="add-files" class="btn btn-primary m-t-15 waves-effect">Add new CSV Files</button>
 
     <div style="text-align:center">
       <input  type="submit" value="SUBMIT"> </input>
