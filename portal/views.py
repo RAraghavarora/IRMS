@@ -1124,7 +1124,8 @@ class NDCArchive(View):
                 'patrons': patrons,
                 'date': date,
                 'report_number': report_number,
-                'addressee': addressee
+                'addressee': addressee,
+                'message': f.decrypt(message).decode()
             }
             return render(request, 'portal/ndc_archive_print.html', context)
         except (KeyError, AttributeError) as e:
